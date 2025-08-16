@@ -73,7 +73,7 @@ struct Misc {
 };
 
 struct Nav {
-  bool master = true;
+  bool master = false;
   bool engine_enabled = false;
   bool draw_overlay = false;
   bool visualizer_3d = false;
