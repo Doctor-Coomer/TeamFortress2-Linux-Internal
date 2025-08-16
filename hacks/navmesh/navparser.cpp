@@ -140,11 +140,11 @@ bool Load(const std::string &path) {
     file.read(reinterpret_cast<char*>(&a.sw_z), sizeof(float));
     if (!file) { g_info.error = "Failed to read NE/SW z"; return false; }
 
-    // nesw area connectionz
+    // NESW area connections
     for (int d = 0; d < 4; ++d) {
       uint32_t cnt = 0; file.read(reinterpret_cast<char*>(&cnt), sizeof(cnt));
       if (!file) { g_info.error = "Failed to read connection count"; return false; }
-      // retardcheck
+      // Sanity check
       if (cnt > 1000000) { g_info.error = "Connection count unreasonable (>1e6)"; return false; }
       a.connections[d].resize(cnt);
       for (uint32_t k = 0; k < cnt; ++k) {
@@ -153,7 +153,7 @@ bool Load(const std::string &path) {
       }
     }
 
-    // retarded hiding spots
+    // Hiding spots
     uint8_t hide_cnt = 0; file.read(reinterpret_cast<char*>(&hide_cnt), sizeof(hide_cnt));
     if (!file) { g_info.error = "Failed to read hiding spot count"; return false; }
     a.hiding_spots.reserve(hide_cnt);
@@ -246,7 +246,7 @@ bool Load(const std::string &path) {
     g_mesh.areas.push_back(std::move(a));
   }
 
-  // laddorz (ladders xd)
+  // Ladders
   if (ver >= 6) {
     uint32_t ladder_count = 0; file.read(reinterpret_cast<char*>(&ladder_count), sizeof(ladder_count));
     if (!file) { g_info.error = "Failed to read ladder count"; return false; }

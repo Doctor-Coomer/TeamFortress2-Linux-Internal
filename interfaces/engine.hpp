@@ -37,8 +37,8 @@ public:
 
   const char* get_level_name(void) {
     void** vtable = *(void ***)this;
-    const char* (*get_level_name_fn)() = (const char* (*)())vtable[51];
-    return get_level_name_fn();
+    const char* (*get_level_name_fn)(void*) = (const char* (*)(void*))vtable[51];
+    return get_level_name_fn(this);
   }
 
 

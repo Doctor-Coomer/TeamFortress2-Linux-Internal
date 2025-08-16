@@ -27,16 +27,27 @@ bool IsDrawEnabled() { return g_draw_enabled; }
 
 const char *GetLastError() { return g_last_error.empty() ? nullptr : g_last_error.c_str(); }
 
-static std::string ExtractMapName(const char* level_path) {
+std::string ExtractMapNameFromPath(const char* level_path) {
   if (!level_path) return {};
   std::string s(level_path);
-  size_t pos = s.find_last_of('/') ;
+  size_t pos = s.find_last_of('/');
   if (pos != std::string::npos) s = s.substr(pos + 1);
   pos = s.find_last_of('\\');
   if (pos != std::string::npos) s = s.substr(pos + 1);
   if (s.rfind("maps/", 0) == 0) s = s.substr(5);
   if (s.size() > 4 && s.compare(s.size() - 4, 4, ".bsp") == 0) s.resize(s.size() - 4);
   return s;
+}
+
+bool EnsureLoadedForCurrentLevel() {
+  if (!engine || !engine->is_in_game()) return false;
+  const char* level = engine->get_level_name();
+  std::string map = ExtractMapNameFromPath(level);
+  if (map.empty()) return false;
+  if (!IsLoaded() || map != g_last_map) {
+    return LoadForMapName(map);
+  }
+  return true;
 }
 
 bool LoadForMapName(const std::string &map_name) {
@@ -58,14 +69,7 @@ bool LoadForMapName(const std::string &map_name) {
 
 void Draw() {
   if (!g_draw_enabled) return;
-
-  if (engine && engine->is_in_game()) {
-    const char* level = engine->get_level_name();
-    std::string map = ExtractMapName(level);
-    if (!map.empty() && (!IsLoaded() || map != g_last_map)) {
-      LoadForMapName(map);
-    }
-  }
+  (void)EnsureLoadedForCurrentLevel();
 
   ImGui::SetNextWindowPos(ImVec2(10, 50), ImGuiCond_Always);
   ImGui::SetNextWindowBgAlpha(0.35f);
