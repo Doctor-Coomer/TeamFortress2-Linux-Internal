@@ -198,7 +198,6 @@ void draw_nav_tab() {
 
   if (config.nav.master) {
     ImGui::Checkbox("Enable nav engine", &config.nav.engine_enabled);
-    ImGui::Checkbox("Overlay window", &config.nav.draw_overlay);
     ImGui::Checkbox("3D visualizer", &config.nav.visualizer_3d);
 
     ImGui::Separator();
