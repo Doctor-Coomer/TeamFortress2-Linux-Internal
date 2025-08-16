@@ -35,6 +35,12 @@ public:
     return is_in_game_fn(this);
   }
 
+  const char* get_level_name(void) {
+    void** vtable = *(void ***)this;
+    const char* (*get_level_name_fn)() = (const char* (*)())vtable[51];
+    return get_level_name_fn();
+  }
+
 
   bool get_player_info(int entity_index, player_info* pinfo) {
     void** vtable = *(void ***)this;

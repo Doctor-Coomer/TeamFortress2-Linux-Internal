@@ -11,6 +11,10 @@
 #include "../interfaces/surface.hpp"
 #include "../interfaces/entity_list.hpp"
 
+#include "../interfaces/debug_overlay.hpp"
+#include "../hacks/navmesh/navengine.hpp"
+#include "../hacks/navmesh/navparser.hpp"
+
 #include "../classes/player.hpp"
 
 #include "../hacks/esp/esp_player.cpp"
@@ -25,6 +29,18 @@ const char* get_panel_name(void* panel) {
     const char* (*get_panel_name_fn)(void*, void*) = (const char* (*)(void*, void*))vtable[37];
 
     return get_panel_name_fn(vgui, panel);
+}
+
+static std::string ExtractMapName(const char* level_path) {
+  if (!level_path) return {};
+  std::string s(level_path);
+  size_t pos = s.find_last_of('/');
+  if (pos != std::string::npos) s = s.substr(pos + 1);
+  pos = s.find_last_of('\\');
+  if (pos != std::string::npos) s = s.substr(pos + 1);
+  if (s.rfind("maps/", 0) == 0) s = s.substr(5);
+  if (s.size() > 4 && s.compare(s.size() - 4, 4, ".bsp") == 0) s.resize(s.size() - 4);
+  return s;
 }
 
 
@@ -84,7 +100,7 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
   }
   
   
-    
+  
   for (unsigned int i = 1; i <= entity_list->get_max_entities(); ++i) {
     if (config.esp.master == false) continue;
 
@@ -99,4 +115,42 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
       esp_entity(i, player->to_entity());
     }
   }
+
+  do {
+    if (!engine || !surface || !overlay) break;
+    if (!(config.nav.master && config.nav.engine_enabled && config.nav.visualizer_3d)) break;
+
+    static std::string g_nav_last_map;
+    const char* level = engine->get_level_name();
+    std::string map = ExtractMapName(level);
+    if (!map.empty() && (!nav::IsLoaded() || map != g_nav_last_map)) {
+      if (nav::LoadForMapName(map)) {
+        g_nav_last_map = map;
+      }
+    }
+
+    if (!nav::IsLoaded()) break;
+
+    const nav::Mesh* mesh = nav::GetMesh();
+    if (!mesh) break;
+
+    surface->set_rgba(0, 255, 180, 160);
+    for (const auto& a : mesh->areas) {
+      Vec3 nw{a.nw[0], a.nw[1], a.nw[2]};
+      Vec3 ne{a.se[0], a.nw[1], a.ne_z};
+      Vec3 se{a.se[0], a.se[1], a.se[2]};
+      Vec3 sw{a.nw[0], a.se[1], a.sw_z};
+
+      Vec3 snw, sne, sse, ssw;
+      if (!(overlay->world_to_screen(&nw, &snw) && overlay->world_to_screen(&ne, &sne) &&
+            overlay->world_to_screen(&se, &sse) && overlay->world_to_screen(&sw, &ssw))) {
+        continue;
+      }
+
+      surface->draw_line((int)snw.x, (int)snw.y, (int)sne.x, (int)sne.y);
+      surface->draw_line((int)sne.x, (int)sne.y, (int)sse.x, (int)sse.y);
+      surface->draw_line((int)sse.x, (int)sse.y, (int)ssw.x, (int)ssw.y);
+      surface->draw_line((int)ssw.x, (int)ssw.y, (int)snw.x, (int)snw.y);
+    }
+  } while (false);
 }

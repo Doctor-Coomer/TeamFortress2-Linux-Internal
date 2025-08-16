@@ -72,11 +72,19 @@ struct Misc {
   bool no_push = false;
 };
 
+struct Nav {
+  bool master = true;
+  bool engine_enabled = false;
+  bool draw_overlay = false;
+  bool visualizer_3d = false;
+};
+
 struct Config {
   Aim aimbot;
   Esp esp;
   Visuals visuals;
   Misc misc;
+  Nav nav;
 };
 
 inline static Config config;
