@@ -2,12 +2,14 @@
 #include <GL/glew.h>
 
 #include "../gui/imgui/dearimgui.hpp"
+#include "../gui/config.hpp"
 
 #include "../interfaces/surface.hpp"
 
 #include "../print.hpp"
 
 #include "../gui/menu.cpp"
+#include "../hacks/navmesh/navengine.hpp"
 
 void (*swap_window_original)(void*) = NULL;
 bool (*poll_event_original)(SDL_Event*) = NULL;
@@ -78,6 +80,14 @@ void swap_window_hook(SDL_Window* window) {
   }
   
   watermark();
+
+
+  // BY SOME REASON IT CRASHES GAME EVEN WHEN ITS WRAPPED INTO 1 BAJILION NULLCHECKS...
+  // bool nav_overlay_enabled = (config.nav.master && config.nav.engine_enabled && config.nav.draw_overlay);
+  // nav::SetDrawEnabled(nav_overlay_enabled);
+  // if (nav_overlay_enabled) {
+  //   nav::Draw();
+  // }
   
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
