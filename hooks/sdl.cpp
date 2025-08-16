@@ -81,11 +81,13 @@ void swap_window_hook(SDL_Window* window) {
   
   watermark();
 
-  bool nav_overlay_enabled = (config.nav.master && config.nav.engine_enabled && config.nav.draw_overlay);
-  nav::SetDrawEnabled(nav_overlay_enabled);
-  if (nav_overlay_enabled) {
-    nav::Draw();
-  }
+
+  // BY SOME REASON IT CRASHES GAME EVEN WHEN ITS WRAPPED INTO 1 BAJILION NULLCHECKS...
+  // bool nav_overlay_enabled = (config.nav.master && config.nav.engine_enabled && config.nav.draw_overlay);
+  // nav::SetDrawEnabled(nav_overlay_enabled);
+  // if (nav_overlay_enabled) {
+  //   nav::Draw();
+  // }
   
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
