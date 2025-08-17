@@ -2,6 +2,7 @@
 
 #include "pathfinder.hpp"
 #include "micropather/micropather.h"
+#include "reachability.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -14,17 +15,12 @@ static const Mesh* s_mesh = nullptr;
 static micropather::MicroPather* s_pather = nullptr;
 
 static inline void ComputeAreaCenter(const Area* a, float out[3]) {
-  out[0] = 0.5f * (a->nw[0] + a->se[0]);
-  out[1] = 0.5f * (a->nw[1] + a->se[1]);
-  out[2] = 0.25f * (a->nw[2] + a->se[2] + a->ne_z + a->sw_z);
+  Vec3 v{};
+  nav::reach::ComputeAreaCenterVec(a, v);
+  out[0] = v.x; out[1] = v.y; out[2] = v.z;
 }
 static inline void ComputeAreaMinMaxZ(const Area* a, float& min_z, float& max_z) {
-  float z0 = a->nw[2];
-  float z1 = a->se[2];
-  float z2 = a->ne_z;
-  float z3 = a->sw_z;
-  min_z = std::min(std::min(z0, z1), std::min(z2, z3));
-  max_z = std::max(std::max(z0, z1), std::max(z2, z3));
+  nav::reach::ComputeAreaMinMaxZ(a, min_z, max_z);
 }
 static inline float Distance3(const float a[3], const float b[3]) {
   float dx = a[0] - b[0];
@@ -53,6 +49,7 @@ public:
 
     float ca[3];
     ComputeAreaCenter(a, ca);
+    Vec3 ca_vec{ ca[0], ca[1], ca[2] };
     float a_min_z, a_max_z;
     ComputeAreaMinMaxZ(a, a_min_z, a_max_z);
 
@@ -63,14 +60,38 @@ public:
         if (!n) continue;
         float n_min_z, n_max_z;
         ComputeAreaMinMaxZ(n, n_min_z, n_max_z);
-        const float kJumpHeight = 72.0f;
-        const float kZSlop = 18.0f;
+        const float kJumpHeight = nav::reach::kJumpHeight;
+        const float kZSlop = nav::reach::kZSlop;
         if (n_min_z - a_max_z > (kJumpHeight + kZSlop)) {
           continue;
         }
         float cn[3];
         ComputeAreaCenter(n, cn);
-        float cost = Distance3(ca, cn);
+        Vec3 cn_vec{ cn[0], cn[1], cn[2] };
+
+        Vec3 center_point = nav::reach::ClosestPointOnAreaToward(a, cn_vec);
+        Vec3 center_next = nav::reach::ClosestPointOnAreaToward(n, center_point);
+
+        Vec3 center_adjusted = nav::reach::AdjustForDropdown(center_point, center_next);
+
+        float height_diff = center_next.z - center_adjusted.z;
+        if (height_diff > kJumpHeight) {
+          continue;
+        }
+
+        const float lift = nav::reach::kZSlop;
+        const float frac = 0.90f;
+        bool seg1 = nav::reach::IsPassableSegment(ca_vec, center_adjusted, lift, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac)
+                 || nav::reach::IsPassableSegment(ca_vec, center_adjusted, 0.0f, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac);
+        bool seg2 = nav::reach::IsPassableSegment(center_adjusted, center_next, lift, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac)
+                 || nav::reach::IsPassableSegment(center_adjusted, center_next, 0.0f, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac);
+        if (!(seg1 && seg2)) {
+          continue;
+        }
+
+        float from_to_adj[3] = { ca_vec.x, ca_vec.y, ca_vec.z };
+        float nextp[3] = { center_next.x, center_next.y, center_next.z };
+        float cost = Distance3(from_to_adj, nextp);
         micropather::StateCost sc{(void*)n, cost};
         adjacent->push_back(sc);
       }

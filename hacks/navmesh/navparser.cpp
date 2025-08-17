@@ -363,7 +363,7 @@ const Area* FindBestAreaAtPosition(float x, float y, float z,
 
   if (best_in) return best_in;
   if (best_jump) return best_jump;
-  return best_overlap;
+  return nullptr;
 }
 
 } // namespace

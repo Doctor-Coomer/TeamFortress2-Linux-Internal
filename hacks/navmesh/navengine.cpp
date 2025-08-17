@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 #include <limits.h>
+#include <cmath>
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -12,6 +13,14 @@
 #include "../../gui/imgui/dearimgui.hpp"
 #include "../../interfaces/debug_overlay.hpp"
 #include "../../interfaces/engine.hpp"
+#include "../../interfaces/engine_trace.hpp"
+#include "../../gui/config.hpp"
+#include "pathfinder.hpp"
+#include "reachability.hpp"
+#include "navbot/nbcore.hpp"
+#include "../../classes/player.hpp"
+#include "../../interfaces/client.hpp"
+#include "../../print.hpp"
 #include "../../vec.hpp"
 
 namespace nav {
@@ -23,6 +32,7 @@ static std::string g_last_map;
 static std::vector<uint32_t> g_vis_path_ids;
 static size_t g_vis_next_index = 0;
 static uint32_t g_vis_goal = 0;
+static Vec3 g_last_look_angles = {};
 
 static std::string Dirname(const std::string &path) {
   size_t pos = path.find_last_of('/');
@@ -125,6 +135,148 @@ void Visualizer_GetPath(const std::vector<uint32_t>** out_area_ids,
   if (out_area_ids) *out_area_ids = &g_vis_path_ids;
   if (out_next_index) *out_next_index = g_vis_next_index;
   if (out_goal_area_id) *out_goal_area_id = g_vis_goal;
+}
+
+CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
+  CreateMoveResult result{};
+  if (!user_cmd || !user_cmd->command_number || !localplayer) {
+    return result;
+  }
+
+  if (!(config.nav.master && config.nav.engine_enabled) || !engine || !engine->is_in_game() || !(localplayer->get_lifestate() == 1)) {
+    Visualizer_ClearPath();
+    nav::navbot::Reset();
+    g_last_look_angles = {};
+    return result;
+  }
+
+  static std::string s_last_map_for_reset;
+  const char* lvl_path = engine ? engine->get_level_name() : nullptr;
+  std::string cur_map = ExtractMapNameFromPath(lvl_path);
+  if (!cur_map.empty() && cur_map != s_last_map_for_reset) {
+    Visualizer_ClearPath();
+    nav::path::Reset();
+    nav::navbot::Reset();
+    s_last_map_for_reset = cur_map;
+  }
+
+  if (EnsureLoadedForCurrentLevel() && IsLoaded()) {
+    static int tick_throttle = 0;
+    if ((tick_throttle++ & 7) == 0) { // ~1/8 ticks
+      Vec3 pos = localplayer->get_origin();
+      const nav::Area* area = nav::FindBestAreaAtPosition(pos.x, pos.y, pos.z);
+      static uint32_t last_area_id = 0;
+      if (area) {
+        if (area->id != last_area_id) {
+          print("nav: player at (%.1f, %.1f, %.1f) in area id=%u place=%u\n", pos.x, pos.y, pos.z, area->id, area->place_id);
+          last_area_id = area->id;
+        }
+      } else if (last_area_id != 0) {
+        print("nav: player not in any area\n");
+        last_area_id = 0;
+      }
+    }
+
+    if (config.nav.roam || config.nav.path_follow) {
+      auto clampf = [](float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); };
+      auto ang_norm = [](float a) {
+        a = std::fmod(a, 360.0f);
+        if (a > 180.0f) a -= 360.0f;
+        if (a <= -180.0f) a += 360.0f;
+        return a;
+      };
+
+      Vec3 orig_view = user_cmd->view_angles;
+      float orig_forward = user_cmd->forwardmove;
+      float orig_side = user_cmd->sidemove;
+
+      Vec3 me = localplayer->get_origin();
+      nav::navbot::RoamOutput ro{};
+      if (nav::navbot::Tick(me.x, me.y, me.z, user_cmd->command_number, &ro) && ro.have_waypoint) {
+        float dx = ro.waypoint[0] - me.x;
+        float dy = ro.waypoint[1] - me.y;
+        float dist2 = dx*dx + dy*dy;
+
+        float desired_yaw = std::atan2(dy, dx) * (180.0f / (float)M_PI);
+        float cur_yaw = user_cmd->view_angles.y;
+        float dyaw = ang_norm(desired_yaw - cur_yaw);
+        float rad = dyaw * (float)M_PI / 180.0f;
+
+        auto is_passable_segment = [&](const Vec3& from, const Vec3& to, float lift_z) -> bool {
+          constexpr float frac = 0.90f;
+          const unsigned int mask = MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE;
+          return nav::reach::IsPassableSegment(from, to, lift_z, (void*)localplayer, mask, frac)
+                 || nav::reach::IsPassableSegment(from, to, 0.0f, (void*)localplayer, mask, frac);
+        };
+
+        float dist = std::sqrt(dist2);
+        float step = dist > 120.0f ? 120.0f : (dist > 60.0f ? 60.0f : 40.0f);
+        float dirx = std::cos(std::atan2(dy, dx));
+        float diry = std::sin(std::atan2(dy, dx));
+        Vec3 ahead = Vec3{ me.x + dirx * step, me.y + diry * step, me.z };
+        const float slope_lift = nav::reach::kZSlop; // modest lift to ignore tiny floor bumps
+        bool forward_clear = is_passable_segment(me, ahead, slope_lift) || is_passable_segment(me, ahead, 0.0f);
+
+        float speed = forward_clear ? 420.0f : 220.0f;
+        float fwd = std::cos(rad) * speed;
+        float side = -std::sin(rad) * speed;
+
+        if (!forward_clear) {
+          float leftx = -diry, lefty = dirx;
+          float offset = nav::reach::kHullHalfWidth * 1.2f;
+          Vec3 ahead_left { me.x + dirx * step + leftx * offset, me.y + diry * step + lefty * offset, me.z };
+          Vec3 ahead_right{ me.x + dirx * step - leftx * offset, me.y + diry * step - lefty * offset, me.z };
+          bool left_clear = is_passable_segment(me, ahead_left, slope_lift) || is_passable_segment(me, ahead_left, 0.0f);
+          bool right_clear = is_passable_segment(me, ahead_right, slope_lift) || is_passable_segment(me, ahead_right, 0.0f);
+          if (left_clear != right_clear) {
+            side += (left_clear ? +220.0f : -220.0f);
+          } else if (!left_clear && !right_clear) {
+            fwd *= 0.35f;
+          }
+        }
+
+        user_cmd->forwardmove = clampf(fwd, -450.0f, 450.0f);
+        user_cmd->sidemove = clampf(side, -450.0f, 450.0f);
+
+        if (ro.perform_crouch_jump) {
+          user_cmd->buttons |= IN_DUCK;
+          if (localplayer->get_ground_entity()) {
+            user_cmd->buttons |= IN_JUMP;
+          }
+        }
+
+        result.move_set = true;
+        result.orig_view = orig_view;
+        result.orig_forward = orig_forward;
+        result.orig_side = orig_side;
+
+        if (config.nav.look_at_path) {
+          Vec3 eye = localplayer->get_shoot_pos();
+          float dy2 = ro.waypoint[1] - eye.y;
+          float dx2 = ro.waypoint[0] - eye.x;
+          float desired_yaw2 = std::atan2(dy2, dx2) * (180.0f / (float)M_PI);
+
+          if (config.nav.look_at_path_smoothed) {
+            float current_yaw = (g_last_look_angles.y == 0.0f && g_last_look_angles.x == 0.0f && g_last_look_angles.z == 0.0f)
+                                  ? user_cmd->view_angles.y
+                                  : g_last_look_angles.y;
+            float delta_yaw = std::remainder(desired_yaw2 - current_yaw, 360.0f);
+            const float aim_speed = 25.0f;
+            float next_yaw = current_yaw + (delta_yaw / aim_speed);
+            next_yaw = ang_norm(next_yaw);
+            user_cmd->view_angles.y = next_yaw;
+          } else {
+            user_cmd->view_angles.y = ang_norm(desired_yaw2);
+          }
+          user_cmd->view_angles.x = 0.0f;
+          g_last_look_angles = user_cmd->view_angles;
+          result.look_applied = true;
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 } // namespace
