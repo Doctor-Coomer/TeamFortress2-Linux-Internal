@@ -19,9 +19,7 @@
 #include "../hacks/navmesh/navparser.cpp"
 #include "../hacks/navmesh/navengine.cpp"
 #include "../hacks/navmesh/micropather/micropather.cpp"
-// Unity include: compile pathfinder and micropather implementations once here.
 #include "../hacks/navmesh/pathfinder.cpp"
-// Unity include: navbot core roaming logic
 #include "../hacks/navmesh/navbot/nbcore.cpp"
 
 #include "../classes/player.hpp"
