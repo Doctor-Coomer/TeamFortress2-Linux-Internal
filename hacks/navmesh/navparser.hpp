@@ -88,5 +88,9 @@ size_t GetAreaCount();
 size_t GetPlaceCount();
 size_t GetLadderCount();
 const Area* GetAreaByIndex(size_t i);
+const Area* FindAreaContainingXY(float x, float y);
+const Area* FindBestAreaAtPosition(float x, float y, float z,
+                                   float jump_height = 72.0f,
+                                   float z_slop = 18.0f);
 
 } // namespace

@@ -77,6 +77,9 @@ struct Nav {
   bool engine_enabled = false;
   bool draw_overlay = false;
   bool visualizer_3d = false;
+  bool path_follow = false;
+  bool roam = false;
+  int target_area_id = 0;
 };
 
 struct Config {

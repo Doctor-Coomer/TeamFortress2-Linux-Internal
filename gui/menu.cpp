@@ -200,6 +200,9 @@ void draw_nav_tab() {
     ImGui::Checkbox("Enable nav engine", &config.nav.engine_enabled);
     ImGui::Checkbox("3D visualizer", &config.nav.visualizer_3d);
 
+    ImGui::Checkbox("Roam movement", &config.nav.roam);
+    ImGui::InputInt("Target area id", &config.nav.target_area_id);
+
     ImGui::Separator();
 
     if (config.nav.engine_enabled) {

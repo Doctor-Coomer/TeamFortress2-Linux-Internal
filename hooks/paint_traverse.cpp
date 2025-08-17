@@ -14,9 +14,15 @@
 #include "../interfaces/debug_overlay.hpp"
 #include "../hacks/navmesh/navengine.hpp"
 #include "../hacks/navmesh/navparser.hpp"
+#include "../hacks/navmesh/pathfinder.hpp"
 
 #include "../hacks/navmesh/navparser.cpp"
 #include "../hacks/navmesh/navengine.cpp"
+#include "../hacks/navmesh/micropather/micropather.cpp"
+// Unity include: compile pathfinder and micropather implementations once here.
+#include "../hacks/navmesh/pathfinder.cpp"
+// Unity include: navbot core roaming logic
+#include "../hacks/navmesh/navbot/nbcore.cpp"
 
 #include "../classes/player.hpp"
 
@@ -138,5 +144,50 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
       surface->draw_line((int)sse.x, (int)sse.y, (int)ssw.x, (int)ssw.y);
       surface->draw_line((int)ssw.x, (int)ssw.y, (int)snw.x, (int)snw.y);
     }
+
+    do {
+      const std::vector<uint32_t>* ids = nullptr;
+      size_t next_idx = 0;
+      uint32_t goal_id = 0;
+      nav::Visualizer_GetPath(&ids, &next_idx, &goal_id);
+      if (!ids || ids->empty()) break;
+
+      std::vector<Vec3> pts;
+      pts.reserve(ids->size());
+      for (uint32_t id : *ids) {
+        const nav::Area* a = nav::path::GetAreaById(id);
+        if (!a) continue;
+        float c[3];
+        nav::path::GetAreaCenter(a, c);
+        pts.push_back(Vec3{c[0], c[1], c[2]});
+      }
+      if (pts.size() < 2) break;
+
+      surface->set_rgba(255, 230, 0, 215);
+      for (size_t i = 0; i + 1 < pts.size(); ++i) {
+        Vec3 s0, s1;
+        if (overlay->world_to_screen(&pts[i], &s0) && overlay->world_to_screen(&pts[i+1], &s1)) {
+          surface->draw_line((int)s0.x, (int)s0.y, (int)s1.x, (int)s1.y);
+        }
+      }
+
+      if (next_idx < pts.size()) {
+        Vec3 snext; if (overlay->world_to_screen(&pts[next_idx], &snext)) {
+          surface->set_rgba(50, 200, 255, 230);
+          surface->draw_circle((int)snext.x, (int)snext.y, 5, 24);
+        }
+      }
+      if (goal_id) {
+        const nav::Area* ga = nav::path::GetAreaById(goal_id);
+        if (ga) {
+          float gc[3]; nav::path::GetAreaCenter(ga, gc);
+          Vec3 g{gc[0], gc[1], gc[2]}, sg;
+          if (overlay->world_to_screen(&g, &sg)) {
+            surface->set_rgba(255, 90, 40, 230);
+            surface->draw_circle((int)sg.x, (int)sg.y, 6, 26);
+          }
+        }
+      }
+    } while (false);
   } while (false);
 }

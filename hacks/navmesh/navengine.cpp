@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <limits.h>
 #include <string>
+#include <vector>
+#include <cstdint>
 
 #include "navparser.hpp"
 #include "../../gui/imgui/dearimgui.hpp"
@@ -15,6 +17,10 @@ namespace nav {
 static bool g_draw_enabled = false;
 static std::string g_last_error;
 static std::string g_last_map;
+
+static std::vector<uint32_t> g_vis_path_ids;
+static size_t g_vis_next_index = 0;
+static uint32_t g_vis_goal = 0;
 
 static std::string Dirname(const std::string &path) {
   size_t pos = path.find_last_of('/');
@@ -95,6 +101,28 @@ void Draw() {
   }
   ImGui::End();
 
+}
+
+void Visualizer_ClearPath() {
+  g_vis_path_ids.clear();
+  g_vis_next_index = 0;
+  g_vis_goal = 0;
+}
+
+void Visualizer_SetPath(const std::vector<uint32_t>& area_ids,
+                        size_t next_index,
+                        uint32_t goal_area_id) {
+  g_vis_path_ids = area_ids;
+  g_vis_next_index = next_index <= g_vis_path_ids.size() ? next_index : g_vis_path_ids.size();
+  g_vis_goal = goal_area_id;
+}
+
+void Visualizer_GetPath(const std::vector<uint32_t>** out_area_ids,
+                        size_t* out_next_index,
+                        uint32_t* out_goal_area_id) {
+  if (out_area_ids) *out_area_ids = &g_vis_path_ids;
+  if (out_next_index) *out_next_index = g_vis_next_index;
+  if (out_goal_area_id) *out_goal_area_id = g_vis_goal;
 }
 
 } // namespace

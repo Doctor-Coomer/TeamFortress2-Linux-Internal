@@ -2,6 +2,9 @@
 
 #include <fstream>
 #include <vector>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace nav {
 
@@ -295,6 +298,70 @@ const Area* GetAreaByIndex(size_t i) {
   if (!g_info.loaded) return nullptr;
   if (i >= g_mesh.areas.size()) return nullptr;
   return &g_mesh.areas[i];
+}
+
+const Area* FindAreaContainingXY(float x, float y) {
+  if (!g_info.loaded) return nullptr;
+  for (const Area &a : g_mesh.areas) {
+    float min_x = std::min(a.nw[0], a.se[0]);
+    float max_x = std::max(a.nw[0], a.se[0]);
+    float min_y = std::min(a.nw[1], a.se[1]);
+    float max_y = std::max(a.nw[1], a.se[1]);
+    if (x >= min_x && x <= max_x && y >= min_y && y <= max_y) {
+      return &a;
+    }
+  }
+  return nullptr;
+}
+
+const Area* FindBestAreaAtPosition(float x, float y, float z,
+                                   float jump_height,
+                                   float z_slop) {
+  if (!g_info.loaded) return nullptr;
+
+  const Area* best_in = nullptr;
+  float best_in_dz = std::numeric_limits<float>::max();
+  const Area* best_jump = nullptr;
+  float best_jump_dz = std::numeric_limits<float>::max();
+  const Area* best_overlap = nullptr;
+  float best_overlap_dz = std::numeric_limits<float>::max();
+
+  for (const Area &a : g_mesh.areas) {
+    float min_x = std::min(a.nw[0], a.se[0]);
+    float max_x = std::max(a.nw[0], a.se[0]);
+    float min_y = std::min(a.nw[1], a.se[1]);
+    float max_y = std::max(a.nw[1], a.se[1]);
+    if (!(x >= min_x && x <= max_x && y >= min_y && y <= max_y))
+      continue;
+
+    float z0 = a.nw[2];
+    float z1 = a.se[2];
+    float z2 = a.ne_z;
+    float z3 = a.sw_z;
+    float min_z = std::min(std::min(z0, z1), std::min(z2, z3));
+    float max_z = std::max(std::max(z0, z1), std::max(z2, z3));
+
+    if (z >= (min_z - z_slop) && z <= (max_z + z_slop)) {
+      float clamped = std::max(min_z, std::min(max_z, z));
+      float dz = std::fabs(z - clamped);
+      if (dz < best_in_dz) { best_in_dz = dz; best_in = &a; }
+      continue;
+    }
+
+    float zj = z + jump_height;
+    if (zj >= (min_z - z_slop) && zj <= (max_z + z_slop)) {
+      float clampedj = std::max(min_z, std::min(max_z, zj));
+      float dzj = std::fabs(zj - clampedj);
+      if (dzj < best_jump_dz) { best_jump_dz = dzj; best_jump = &a; }
+    }
+
+    float dz_ovr = (z < min_z) ? (min_z - z) : (z > max_z ? (z - max_z) : 0.0f);
+    if (dz_ovr < best_overlap_dz) { best_overlap_dz = dz_ovr; best_overlap = &a; }
+  }
+
+  if (best_in) return best_in;
+  if (best_jump) return best_jump;
+  return best_overlap;
 }
 
 } // namespace
