@@ -50,8 +50,11 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
   static Vec3 s_nav_orig_view = {};
   static float s_nav_orig_forward = 0.0f;
   static float s_nav_orig_side = 0.0f;
+  static Vec3 s_nav_last_look_angles = {};
+  static bool s_nav_look_applied = false;
   
   if (user_cmd->tick_count > 1) {    
+    s_nav_look_applied = false;
     
     aimbot(user_cmd);
       
@@ -206,12 +209,39 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
             s_nav_orig_view = user_cmd->view_angles;
             s_nav_orig_forward = user_cmd->forwardmove;
             s_nav_orig_side = user_cmd->sidemove;
+
+            if (config.nav.look_at_path) {
+              Vec3 eye = localplayer->get_shoot_pos();
+              float dy2 = ro.waypoint[1] - eye.y;
+              float dx2 = ro.waypoint[0] - eye.x;
+              float desired_yaw = std::atan2(dy2, dx2) * (180.0f / (float)M_PI);
+
+              if (config.nav.look_at_path_smoothed) {
+                float current_yaw = s_nav_last_look_angles.y == 0.0f && s_nav_last_look_angles.x == 0.0f && s_nav_last_look_angles.z == 0.0f
+                                      ? user_cmd->view_angles.y
+                                      : s_nav_last_look_angles.y;
+                float delta_yaw = std::remainder(desired_yaw - current_yaw, 360.0f);
+                const float aim_speed = 25.0f;
+                float next_yaw = current_yaw + (delta_yaw / aim_speed);
+                next_yaw = ang_norm(next_yaw);
+                user_cmd->view_angles.y = next_yaw;
+                user_cmd->view_angles.x = 0.0f;
+                s_nav_last_look_angles = user_cmd->view_angles;
+                s_nav_look_applied = true;
+              } else {
+                user_cmd->view_angles.y = ang_norm(desired_yaw);
+                user_cmd->view_angles.x = 0.0f;
+                s_nav_last_look_angles = user_cmd->view_angles;
+                s_nav_look_applied = true;
+              }
+            }
           }
         }
       }
     } else {
       nav::Visualizer_ClearPath();
       nav::navbot::Reset();
+      s_nav_last_look_angles = {};
     }
   } 
   
@@ -234,8 +264,10 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
     s_nav_move_set = false;
   }
   
-  if (config.aimbot.silent == true)
-    return false;
-  else
+  if (config.aimbot.silent == true) {
+    // If nav look changed view this tick, force visible camera update
+    return s_nav_look_applied ? true : false;
+  } else {
     return rc;
+  }
 }

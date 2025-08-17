@@ -79,6 +79,8 @@ struct Nav {
   bool visualizer_3d = false;
   bool path_follow = false;
   bool roam = false;
+  bool look_at_path = false;
+  bool look_at_path_smoothed = false;
   int target_area_id = 0;
 };
 

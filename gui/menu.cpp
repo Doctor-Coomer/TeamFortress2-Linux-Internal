@@ -204,6 +204,12 @@ void draw_nav_tab() {
     ImGui::InputInt("Target area id", &config.nav.target_area_id);
 
     ImGui::Separator();
+    ImGui::Text("View");
+    ImGui::Checkbox("Look at path", &config.nav.look_at_path);
+    ImGui::SameLine();
+    ImGui::Checkbox("Smoothed##LookAtPath", &config.nav.look_at_path_smoothed);
+
+    ImGui::Separator();
 
     if (config.nav.engine_enabled) {
       if (nav::IsLoaded()) {
