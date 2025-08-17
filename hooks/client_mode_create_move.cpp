@@ -225,12 +225,10 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
                 float next_yaw = current_yaw + (delta_yaw / aim_speed);
                 next_yaw = ang_norm(next_yaw);
                 user_cmd->view_angles.y = next_yaw;
-                user_cmd->view_angles.x = 0.0f;
                 s_nav_last_look_angles = user_cmd->view_angles;
                 s_nav_look_applied = true;
               } else {
                 user_cmd->view_angles.y = ang_norm(desired_yaw);
-                user_cmd->view_angles.x = 0.0f;
                 s_nav_last_look_angles = user_cmd->view_angles;
                 s_nav_look_applied = true;
               }
@@ -265,7 +263,6 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
   }
   
   if (config.aimbot.silent == true) {
-    // If nav look changed view this tick, force visible camera update
     return s_nav_look_applied ? true : false;
   } else {
     return rc;
