@@ -84,7 +84,7 @@ static inline bool area_disallowed_for_goal(const nav::Area& a) {
   return false;
 }
 
-static const nav::Area* find_nearest_area_2d(float me_x, float me_y) {
+static const nav::Area* find_nearest_area_2d(float me_x, float me_y, float me_z) {
   const nav::Mesh* mesh = nav::GetMesh();
   if (!mesh || mesh->areas.empty()) return nullptr;
   const nav::Area* best = nullptr;
@@ -92,6 +92,12 @@ static const nav::Area* find_nearest_area_2d(float me_x, float me_y) {
   for (const auto& a : mesh->areas) {
     if (area_disallowed_for_goal(a)) continue;
     float c[3]; nav::path::GetAreaCenter(&a, c);
+    // Height reachability: skip areas whose floor is too far above us to climb/jump.
+    float z0 = a.nw[2], z1 = a.se[2], z2 = a.ne_z, z3 = a.sw_z;
+    float min_z = std::min(std::min(z0, z1), std::min(z2, z3));
+    const float kJumpHeight = 72.0f;
+    const float kZSlop = 18.0f;
+    if ((min_z - me_z) > (kJumpHeight + kZSlop)) continue;
     float d2 = dist2_2d(me_x, me_y, c[0], c[1]);
     if (d2 < best_d2) { best_d2 = d2; best = &a; }
   }
@@ -294,7 +300,7 @@ bool Tick(float me_x, float me_y, float me_z, int cmd_number, RoamOutput* out) {
       }
     }
     if (out && !out->have_waypoint) {
-      const nav::Area* near_a = find_nearest_area_2d(me_x, me_y);
+      const nav::Area* near_a = find_nearest_area_2d(me_x, me_y, me_z);
       if (near_a) {
         float c[3]; nav::path::GetAreaCenter(near_a, c);
         out->have_waypoint = true;

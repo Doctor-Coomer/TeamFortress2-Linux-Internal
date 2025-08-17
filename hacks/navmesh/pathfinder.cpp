@@ -18,6 +18,14 @@ static inline void ComputeAreaCenter(const Area* a, float out[3]) {
   out[1] = 0.5f * (a->nw[1] + a->se[1]);
   out[2] = 0.25f * (a->nw[2] + a->se[2] + a->ne_z + a->sw_z);
 }
+static inline void ComputeAreaMinMaxZ(const Area* a, float& min_z, float& max_z) {
+  float z0 = a->nw[2];
+  float z1 = a->se[2];
+  float z2 = a->ne_z;
+  float z3 = a->sw_z;
+  min_z = std::min(std::min(z0, z1), std::min(z2, z3));
+  max_z = std::max(std::max(z0, z1), std::max(z2, z3));
+}
 static inline float Distance3(const float a[3], const float b[3]) {
   float dx = a[0] - b[0];
   float dy = a[1] - b[1];
@@ -45,12 +53,21 @@ public:
 
     float ca[3];
     ComputeAreaCenter(a, ca);
+    float a_min_z, a_max_z;
+    ComputeAreaMinMaxZ(a, a_min_z, a_max_z);
 
     for (int d = 0; d < 4; ++d) {
       const auto& ids = a->connections[d];
       for (uint32_t nid : ids) {
         const Area* n = GetAreaByIdInternal(mesh, nid);
         if (!n) continue;
+        float n_min_z, n_max_z;
+        ComputeAreaMinMaxZ(n, n_min_z, n_max_z);
+        const float kJumpHeight = 72.0f;
+        const float kZSlop = 18.0f;
+        if (n_min_z - a_max_z > (kJumpHeight + kZSlop)) {
+          continue;
+        }
         float cn[3];
         ComputeAreaCenter(n, cn);
         float cost = Distance3(ca, cn);
