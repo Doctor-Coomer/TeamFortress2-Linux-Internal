@@ -79,16 +79,6 @@ public:
           continue;
         }
 
-        const float lift = nav::reach::kZSlop;
-        const float frac = 0.90f;
-        bool seg1 = nav::reach::IsPassableSegment(ca_vec, center_adjusted, lift, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac)
-                 || nav::reach::IsPassableSegment(ca_vec, center_adjusted, 0.0f, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac);
-        bool seg2 = nav::reach::IsPassableSegment(center_adjusted, center_next, lift, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac)
-                 || nav::reach::IsPassableSegment(center_adjusted, center_next, 0.0f, nullptr, MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE, frac);
-        if (!(seg1 && seg2)) {
-          continue;
-        }
-
         float from_to_adj[3] = { ca_vec.x, ca_vec.y, ca_vec.z };
         float nextp[3] = { center_next.x, center_next.y, center_next.z };
         float cost = Distance3(from_to_adj, nextp);

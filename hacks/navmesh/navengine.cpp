@@ -22,6 +22,7 @@
 #include "../../interfaces/client.hpp"
 #include "../../print.hpp"
 #include "../../vec.hpp"
+#include "../aimbot/aimbot.hpp"
 
 namespace nav {
 
@@ -177,7 +178,7 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
       }
     }
 
-    if (config.nav.roam || config.nav.path_follow) {
+    if (config.nav.roam) {
       auto clampf = [](float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); };
       auto ang_norm = [](float a) {
         a = std::fmod(a, 360.0f);
@@ -202,37 +203,20 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
         float dyaw = ang_norm(desired_yaw - cur_yaw);
         float rad = dyaw * (float)M_PI / 180.0f;
 
-        auto is_passable_segment = [&](const Vec3& from, const Vec3& to, float lift_z) -> bool {
-          constexpr float frac = 0.90f;
-          const unsigned int mask = MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE;
-          return nav::reach::IsPassableSegment(from, to, lift_z, (void*)localplayer, mask, frac)
-                 || nav::reach::IsPassableSegment(from, to, 0.0f, (void*)localplayer, mask, frac);
-        };
-
         float dist = std::sqrt(dist2);
         float step = dist > 120.0f ? 120.0f : (dist > 60.0f ? 60.0f : 40.0f);
         float dirx = std::cos(std::atan2(dy, dx));
         float diry = std::sin(std::atan2(dy, dx));
         Vec3 ahead = Vec3{ me.x + dirx * step, me.y + diry * step, me.z };
         const float slope_lift = nav::reach::kZSlop; // modest lift to ignore tiny floor bumps
-        bool forward_clear = is_passable_segment(me, ahead, slope_lift) || is_passable_segment(me, ahead, 0.0f);
-
+        bool forward_clear = true;
+        
         float speed = forward_clear ? 420.0f : 220.0f;
         float fwd = std::cos(rad) * speed;
         float side = -std::sin(rad) * speed;
-
+        
         if (!forward_clear) {
-          float leftx = -diry, lefty = dirx;
-          float offset = nav::reach::kHullHalfWidth * 1.2f;
-          Vec3 ahead_left { me.x + dirx * step + leftx * offset, me.y + diry * step + lefty * offset, me.z };
-          Vec3 ahead_right{ me.x + dirx * step - leftx * offset, me.y + diry * step - lefty * offset, me.z };
-          bool left_clear = is_passable_segment(me, ahead_left, slope_lift) || is_passable_segment(me, ahead_left, 0.0f);
-          bool right_clear = is_passable_segment(me, ahead_right, slope_lift) || is_passable_segment(me, ahead_right, 0.0f);
-          if (left_clear != right_clear) {
-            side += (left_clear ? +220.0f : -220.0f);
-          } else if (!left_clear && !right_clear) {
-            fwd *= 0.35f;
-          }
+          fwd *= 0.35f;
         }
 
         user_cmd->forwardmove = clampf(fwd, -450.0f, 450.0f);
@@ -250,7 +234,8 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
         result.orig_forward = orig_forward;
         result.orig_side = orig_side;
 
-        if (config.nav.look_at_path) {
+        bool aimbot_active_now = (config.aimbot.master && target_player != nullptr && ((!config.aimbot.use_key) || is_button_down(config.aimbot.key)));
+        if (config.nav.look_at_path && !aimbot_active_now) {
           Vec3 eye = localplayer->get_shoot_pos();
           float dy2 = ro.waypoint[1] - eye.y;
           float dx2 = ro.waypoint[0] - eye.x;

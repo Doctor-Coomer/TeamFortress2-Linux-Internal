@@ -6,7 +6,6 @@
 
 #include "navparser.hpp"
 #include "../../vec.hpp"
-#include "../../interfaces/engine_trace.hpp"
 
 namespace nav {
 namespace reach {
@@ -88,24 +87,6 @@ inline Vec3 AdjustForDropdown(const Vec3& current_pos, const Vec3& next_pos) {
   return current_pos;
 }
 
-inline bool IsPassableSegment(const Vec3& from, const Vec3& to,
-                              float lift_z = 0.0f,
-                              void* skip_entity = nullptr,
-                              unsigned int mask = MASK_SOLID | CONTENTS_PLAYERCLIP | CONTENTS_MOVEABLE | CONTENTS_GRATE,
-                              float fraction_threshold = 0.98f) {
-  if (!engine_trace) return true;
-
-  Vec3 mins{ -kHullHalfWidth, -kHullHalfWidth, 0.0f };
-  Vec3 maxs{  kHullHalfWidth,  kHullHalfWidth, kHullHeight };
-  Vec3 f = from; Vec3 t = to; f.z += lift_z; t.z += lift_z;
-
-  ray_t ray = engine_trace->init_ray(&f, &t, &mins, &maxs);
-  trace_filter filter; engine_trace->init_trace_filter(&filter, skip_entity);
-  trace_t tr{};
-  engine_trace->trace_ray(&ray, mask, &filter, &tr);
-
-  return (!tr.all_solid && !tr.start_solid && tr.fraction > fraction_threshold);
-}
 
 } // namespace reach
 } // namespace nav
