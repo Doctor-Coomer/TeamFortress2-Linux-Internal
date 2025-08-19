@@ -783,6 +783,53 @@ public:
     return false;
   }
   
+  bool is_sniper_rifle(void) {
+    int weapon_type_id = this->get_type_id();
+    if (weapon_type_id == TF_WEAPON_SNIPERRIFLE ||
+	weapon_type_id == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
+	weapon_type_id == TF_WEAPON_SNIPERRIFLE_DECAP)
+      {
+	return true;
+      }
+
+    short weapon_def_id = this->get_def_id();
+    switch (weapon_def_id) {
+    case Sniper_m_SniperRifle:
+    case Sniper_m_SniperRifleR:
+    case Sniper_m_TheBazaarBargain:
+    case Sniper_m_TheMachina:
+    case Sniper_m_FestiveSniperRifle:
+    case Sniper_m_TheHitmansHeatmaker:
+    case Sniper_m_SilverBotkillerSniperRifleMkI:
+    case Sniper_m_GoldBotkillerSniperRifleMkI:
+    case Sniper_m_TheAWPerHand:
+    case Sniper_m_RustBotkillerSniperRifleMkI:
+    case Sniper_m_BloodBotkillerSniperRifleMkI:
+    case Sniper_m_CarbonadoBotkillerSniperRifleMkI:
+    case Sniper_m_DiamondBotkillerSniperRifleMkI:
+    case Sniper_m_SilverBotkillerSniperRifleMkII:
+    case Sniper_m_GoldBotkillerSniperRifleMkII:
+    case Sniper_m_TheClassic:
+    case Sniper_m_NightOwl:
+    case Sniper_m_PurpleRange:
+    case Sniper_m_LumberFromDownUnder:
+    case Sniper_m_ShotintheDark:
+    case Sniper_m_Bogtrotter:
+    case Sniper_m_Thunderbolt:
+    case Sniper_m_PumpkinPatch:
+    case Sniper_m_Boneyard:
+    case Sniper_m_Wildwood:
+    case Sniper_m_Balloonicorn:
+    case Sniper_m_Rainbow:
+    case Sniper_m_CoffinNail:
+    case Sniper_m_DressedtoKill:
+    case Sniper_m_Airwolf:
+    case Sniper_m_ShootingStar:
+      return true;
+    }
+    return false;
+  }
+
   bool is_headshot_weapon(void) {
     int weapon_type_id = this->get_type_id();
     if (weapon_type_id == TF_WEAPON_SNIPERRIFLE ||

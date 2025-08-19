@@ -2,12 +2,14 @@
 #include <GL/glew.h>
 
 #include "../gui/imgui/dearimgui.hpp"
+#include "../gui/config.hpp"
 
 #include "../interfaces/surface.hpp"
 
 #include "../print.hpp"
 
 #include "../gui/menu.cpp"
+#include "../hacks/navmesh/navengine.hpp"
 
 void (*swap_window_original)(void*) = NULL;
 bool (*poll_event_original)(SDL_Event*) = NULL;

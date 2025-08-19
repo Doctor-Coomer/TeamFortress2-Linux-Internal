@@ -256,6 +256,12 @@ public:
     return get_shoot_pos_fn(this);
   }
 
+  Vec3 get_eye_angles(void) {
+    void** vtable = *(void ***)this;
+    Vec3& (*eye_angles_fn)(void*) = (Vec3& (*)(void*))vtable[4];
+    return eye_angles_fn(this);
+  }
+
   int get_tf_class(void) {
     return *(int*)(this + 0x1BA0);
   }

@@ -6,6 +6,9 @@
 #include "imgui/dearimgui.hpp"
 
 #include <SDL2/SDL_mouse.h>
+#include "../hacks/navmesh/navparser.hpp"
+#include "../hacks/navmesh/navengine.hpp"
+#include "../interfaces/engine.hpp"
 
 inline static bool menu_focused = false;
 
@@ -167,6 +170,73 @@ void draw_misc_tab() {
   ImGui::EndGroup();
 }
 
+void draw_nav_tab() {
+  ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 27);
+  
+  bool in_game = engine && engine->is_in_game();
+  
+  if (!in_game) {
+    ImGui::TextColored(ImVec4(1,0.6f,0.2f,1), "Nav features only available in-game");
+    ImGui::Text(" ");
+    ImGui::EndGroup();
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::Text("Join a match to use navigation features");
+    ImGui::EndGroup();
+    return;
+  }
+  
+  ImGui::Checkbox("Master", &config.nav.master);
+  ImGui::EndGroup();
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  ImGui::BeginGroup();
+
+  if (config.nav.master) {
+    ImGui::Checkbox("Enable nav engine", &config.nav.engine_enabled);
+    ImGui::Checkbox("3D visualizer", &config.nav.visualizer_3d);
+
+    ImGui::Checkbox("Roam movement", &config.nav.roam);
+    ImGui::InputInt("Target area id", &config.nav.target_area_id);
+
+    ImGui::Separator();
+    ImGui::Text("View");
+    ImGui::Checkbox("Look at path", &config.nav.look_at_path);
+    ImGui::SameLine();
+    ImGui::Checkbox("Smoothed##LookAtPath", &config.nav.look_at_path_smoothed);
+
+    ImGui::Separator();
+
+    if (config.nav.engine_enabled) {
+      if (nav::IsLoaded()) {
+        const nav::Info &info = nav::GetInfo();
+        ImGui::Text("Loaded: %s", info.path.c_str());
+        ImGui::Text("Size: %zu bytes", info.size);
+        ImGui::Text("Magic: %s (0x%08X)", info.magic_ascii, info.magic_le);
+        ImGui::Text("Version: %d", info.version);
+      } else {
+        const char *err = nav::GetError();
+        if (!err) err = nav::GetLastError();
+        if (err) {
+          ImGui::TextColored(ImVec4(1,0.4f,0.2f,1), "Error: %s", err);
+        } else {
+          ImGui::Text("No nav loaded.");
+        }
+      }
+    } else {
+      ImGui::Text("navengine disabled.");
+    }
+  } else {
+    ImGui::Text("navengine disabled.");
+  }
+
+  ImGui::EndGroup();
+}
+
 
 void draw_tab(ImGuiStyle* style, const char* name, int* tab, int index) {
   ImVec4 orig_box_color = ImVec4(0.15, 0.15, 0.15, 1);
@@ -208,6 +278,7 @@ void draw_menu() {
     draw_tab(style, "ESP", &tab, 1);
     draw_tab(style, "Visuals", &tab, 2);
     draw_tab(style, "Misc", &tab, 3);
+    draw_tab(style, "Nav", &tab, 4);
 
     switch (tab) {
     case 0:
@@ -221,6 +292,9 @@ void draw_menu() {
       break;
     case 3:
       draw_misc_tab();
+      break;
+    case 4:
+      draw_nav_tab();
       break;
     }
   }
