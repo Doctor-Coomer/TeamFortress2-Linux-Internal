@@ -360,32 +360,32 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
       }
 
       // replace it with actual autoweapon logic
-      {
-        if (g_weapon_switch_cooldown > 0) {
-          --g_weapon_switch_cooldown;
-        }
+      // {
+      //   if (g_weapon_switch_cooldown > 0) {
+      //     --g_weapon_switch_cooldown;
+      //   }
 
-        int desired_slot = 1;
-        const float melee_range = 120.0f;
-        bool melee_close = false;
-        if (target_player && target_player->get_lifestate() == 1 && !target_player->is_dormant()) {
-          Vec3 tpos = target_player->get_origin();
-          float dxm = tpos.x - me.x;
-          float dym = tpos.y - me.y;
-          float dzm = tpos.z - me.z;
-          float d2 = dxm*dxm + dym*dym + dzm*dzm;
-          melee_close = (d2 <= (melee_range * melee_range));
-        }
-        if (melee_close) desired_slot = 3;
+      //   int desired_slot = 1;
+      //   const float melee_range = 120.0f;
+      //   bool melee_close = false;
+      //   if (target_player && target_player->get_lifestate() == 1 && !target_player->is_dormant()) {
+      //     Vec3 tpos = target_player->get_origin();
+      //     float dxm = tpos.x - me.x;
+      //     float dym = tpos.y - me.y;
+      //     float dzm = tpos.z - me.z;
+      //     float d2 = dxm*dxm + dym*dym + dzm*dzm;
+      //     melee_close = (d2 <= (melee_range * melee_range));
+      //   }
+      //   if (melee_close) desired_slot = 3;
 
-        if (desired_slot != g_last_weapon_slot_selected && g_weapon_switch_cooldown == 0) {
-          user_cmd->weapon_select = desired_slot;
-          user_cmd->weapon_subtype = 0;
-          g_last_weapon_slot_selected = desired_slot;
-          g_weapon_switch_cooldown = 12;
-          print("navbot: slot -> %d\n", desired_slot);
-        }
-      }
+      //   if (desired_slot != g_last_weapon_slot_selected && g_weapon_switch_cooldown == 0) {
+      //     user_cmd->weapon_select = desired_slot;
+      //     user_cmd->weapon_subtype = 0;
+      //     g_last_weapon_slot_selected = desired_slot;
+      //     g_weapon_switch_cooldown = 12;
+      //     print("navbot: slot -> %d\n", desired_slot);
+      //   }
+      // }
     }
   }
 
