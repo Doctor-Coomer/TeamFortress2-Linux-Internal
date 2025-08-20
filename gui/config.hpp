@@ -25,6 +25,35 @@ struct Aim {
   bool draw_fov = false;
 
   bool ignore_friends = true;
+
+  bool autoscope = true;
+  float autoscope_distance = 1850.0f;
+
+  struct Hitscan {
+    bool enabled = true;
+    enum Modifiers {
+      ScopedOnly      = 1 << 0,
+      WaitForHeadshot = 1 << 1,
+    };
+    int modifiers = 0;
+    // 0 = Chest, 1 = Head
+    int hitbox = 0;
+  } hitscan;
+
+  struct Projectile {
+    bool enabled = true;
+    // 0 = Chest, 1 = Head
+    int hitbox = 0;
+  } projectile;
+
+  struct Melee {
+    bool enabled = true;
+    bool predict = true;
+    float predict_time = 0.15f;
+    bool auto_backstab = true;
+    float melee_reach = 72.0f;
+    float backstab_cone_deg = 70.0f;
+  } melee;
 };
 
 struct Esp {
@@ -73,15 +102,33 @@ struct Misc {
 };
 
 struct Nav {
-  bool master = false;
-  bool engine_enabled = false;
-  bool draw_overlay = false;
-  bool visualizer_3d = false;
-  bool path_follow = false;
-  bool roam = false;
+  bool master = true;
+  bool engine_enabled = true;
+  bool visualize_navmesh = false;
+  bool visualize_path = false;
+  bool navbot = true;
   bool look_at_path = false;
   bool look_at_path_smoothed = false;
-  int target_area_id = 0;
+  bool scheduler_enabled = true;
+  bool snipe_enemies = true;
+  struct SnipeRangePerClass {
+    float scout    = 900.0f;
+    float sniper   = 900.0f;
+    float soldier  = 900.0f;
+    float demoman  = 900.0f;
+    float medic    = 900.0f;
+    float heavy    = 900.0f;
+    float pyro     = 900.0f;
+    float spy      = 900.0f;
+    float engineer = 900.0f;
+  } snipe_range;
+  int   snipe_repath_ticks = 12;
+  float snipe_replan_move_threshold = 96.0f;
+  bool chase_target = true;
+  bool chase_only_melee = true;
+  float chase_distance_max = 1500.0f;
+  int chase_repath_ticks = 10;
+  float chase_replan_move_threshold = 96.0f;
 };
 
 struct Config {

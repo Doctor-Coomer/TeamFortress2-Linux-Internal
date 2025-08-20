@@ -102,7 +102,11 @@ public:
   }
   
   const char* get_model_name(void) {
-    return (const char*)*(unsigned long*)(*(unsigned long*)(this + 0x88) + 0x8);
+    unsigned long a = *(unsigned long*)(this + 0x88);
+    if (!a) return "";
+    unsigned long b = *(unsigned long*)(a + 0x8);
+    if (!b) return "";
+    return (const char*)b;
   }
 
   enum pickup_type get_pickup_type(void) {

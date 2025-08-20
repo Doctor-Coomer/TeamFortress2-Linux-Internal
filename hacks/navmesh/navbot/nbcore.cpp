@@ -14,6 +14,12 @@
 #include "../navparser.hpp"
 #include "../pathfinder.hpp"
 #include "../tfnav_flags.hpp"
+#include "../../../classes/entity.hpp"
+#include "../../../interfaces/entity_list.hpp"
+// Needed for Player method calls (team, lifestate, origin)
+#include "../../../classes/player.hpp"
+// Ray/visibility for LOS-based snipe goal search
+#include "../../../interfaces/engine_trace.hpp"
 
 namespace nav { namespace navbot {
 
@@ -46,6 +52,18 @@ struct RoamState {
 };
 
 static RoamState g_roam;
+
+struct ChaseState {
+  bool active = false;
+  int last_target_idx = 0;
+  float last_goal[3] = {0.f, 0.f, 0.f};
+};
+
+static ChaseState g_chase;
+static TaskKind g_task = TaskKind::Roam;
+// Preserve last non-roam task and tolerate brief target loss
+static TaskKind g_prev_task = TaskKind::Roam;
+static int g_target_grace_until = 0; // cmd_number until which we pretend target still exists
 
 static inline float dist2_2d(float ax, float ay, float bx, float by) {
   float dx = ax - bx, dy = ay - by;
@@ -232,12 +250,70 @@ static bool plan_path(uint32_t start_id, uint32_t end_id) {
 
 void Reset() {
   g_roam = RoamState{};
+  g_chase = ChaseState{};
+  g_task = TaskKind::Roam;
   nav::Visualizer_ClearPath();
 }
 
-bool Tick(float me_x, float me_y, float me_z, int cmd_number, RoamOutput* out) {
-  if (out) *out = RoamOutput{};
+uint32_t CurrentGoalArea() {
+  return g_roam.goal_id;
+}
+
+void ClearGoal() {
+  g_roam.goal_id = 0;
+  g_roam.path_ids.clear();
+  g_roam.next_index = 0;
+  g_roam.last_plan_tick = 0;
+  g_roam.last_wp_d2 = 0.f;
+  g_roam.last_progress_tick = 0;
+  nav::Visualizer_ClearPath();
+}
+
+bool PlanToPositionFrom(float me_x, float me_y, float me_z,
+                        float goal_x, float goal_y, float goal_z,
+                        int cmd_number) {
   if (!nav::IsLoaded()) return false;
+
+  const nav::Area* start = nav::FindBestAreaAtPosition(me_x, me_y, me_z);
+  if (!start) start = find_nearest_area_2d(me_x, me_y, me_z);
+  if (!start) return false;
+
+  const nav::Area* goal = nav::FindBestAreaAtPosition(goal_x, goal_y, goal_z);
+  if (!goal) goal = find_nearest_area_2d(goal_x, goal_y, goal_z);
+  if (!goal) return false;
+
+  // Skip disallowed goals (blockers/bad areas). Find a nearby allowed candidate by 2D nearest.
+  if (area_disallowed_for_goal(*goal)) {
+    goal = find_nearest_area_2d(goal_x, goal_y, goal_z);
+    if (!goal || area_disallowed_for_goal(*goal)) return false;
+  }
+
+  if (plan_path(start->id, goal->id)) {
+    g_roam.goal_id = goal->id;
+    g_roam.last_plan_tick = cmd_number;
+    g_roam.last_wp_d2 = 0.f;
+    g_roam.last_progress_tick = cmd_number;
+    if (!g_roam.path_ids.empty() && g_roam.path_ids[0] == start->id) {
+      g_roam.next_index = 1;
+    } else {
+      g_roam.next_index = 0;
+    }
+    nav::Visualizer_SetPath(g_roam.path_ids, g_roam.next_index, g_roam.goal_id);
+    return true;
+  }
+
+  return false;
+}
+
+bool Tick(const BotContext& ctx, BotOutput* out) {
+  if (out) *out = BotOutput{};
+  if (!nav::IsLoaded()) return false;
+
+  // Snapshot inputs locally for minimal code churn
+  const float me_x = ctx.me[0];
+  const float me_y = ctx.me[1];
+  const float me_z = ctx.me[2];
+  const int   cmd_number = ctx.cmd_number;
 
   const nav::Area* cur_area = nav::FindBestAreaAtPosition(me_x, me_y, me_z);
   bool teleported = false;
@@ -283,6 +359,330 @@ bool Tick(float me_x, float me_y, float me_z, int cmd_number, RoamOutput* out) {
     g_roam.last_visited_clear_tick = cmd_number;
   }
 
+  // -----------------
+  // Task scheduler
+  // -----------------
+  g_task = TaskKind::Roam;
+  // Target with grace period to avoid flicker when aimbot drops target for a few ticks
+  bool have_target_now = ctx.have_target;
+  if (have_target_now) {
+    g_target_grace_until = cmd_number + 16; // ~0.25s at 66tps
+  }
+  bool had_combat_task = (g_prev_task == TaskKind::Snipe) || (g_prev_task == TaskKind::ChaseMelee);
+  bool within_grace = (cmd_number < g_target_grace_until) && had_combat_task;
+  bool have_target = have_target_now || within_grace;
+  float tpos[3] = {0.f, 0.f, 0.f};
+  int   tidx = 0;
+  if (have_target_now) {
+    tidx = ctx.target_index;
+    tpos[0] = ctx.target_pos[0];
+    tpos[1] = ctx.target_pos[1];
+    tpos[2] = ctx.target_pos[2];
+  } else if (within_grace) {
+    tidx = g_chase.last_target_idx;
+    tpos[0] = g_chase.last_goal[0];
+    tpos[1] = g_chase.last_goal[1];
+    tpos[2] = g_chase.last_goal[2];
+  }
+
+  // Snipe fallback target: if no aimbot/grace target, pick nearest enemy to stalk
+  bool snipe_have_target = have_target;
+  float snipe_tpos[3] = {tpos[0], tpos[1], tpos[2]};
+  int   snipe_tidx = tidx;
+  if (!snipe_have_target && ctx.scheduler_enabled && ctx.snipe_enabled && !ctx.melee_equipped && entity_list) {
+    Player* me = entity_list->get_localplayer();
+    if (me) {
+      float best_d2_any = std::numeric_limits<float>::max();
+      int best_idx = 0;
+      float best_pos[3] = {0.f, 0.f, 0.f};
+      int max_e = entity_list->get_max_entities();
+      for (int i = 1; i <= max_e; ++i) {
+        Player* p = entity_list->player_from_index(i);
+        if (!p || p == me) continue;
+        if (p->is_dormant()) continue;
+        if (p->get_team() == me->get_team()) continue;
+        if (p->get_lifestate() != 1) continue;
+        if (p->is_invulnerable()) continue;
+        Vec3 o = p->get_origin();
+        float d2 = dist2_2d(me_x, me_y, o.x, o.y);
+        if (d2 < best_d2_any) {
+          best_d2_any = d2;
+          best_idx = i;
+          best_pos[0] = o.x; best_pos[1] = o.y; best_pos[2] = o.z;
+        }
+      }
+      if (best_idx != 0) {
+        snipe_have_target = true;
+        snipe_tidx = best_idx;
+        snipe_tpos[0] = best_pos[0]; snipe_tpos[1] = best_pos[1]; snipe_tpos[2] = best_pos[2];
+      }
+    }
+  }
+
+  // Distance to target for auto-melee gating (aimbot/grace target only)
+  float dx_t = 0.f, dy_t = 0.f;
+  float d2_t = std::numeric_limits<float>::max();
+  if (have_target) {
+    dx_t = tpos[0] - me_x; dy_t = tpos[1] - me_y;
+    d2_t = dx_t*dx_t + dy_t*dy_t;
+  }
+  const float kAutoMeleeHU = 300.0f;
+  const bool in_auto_melee_range = have_target && (d2_t <= (kAutoMeleeHU * kAutoMeleeHU));
+
+  // Snipe-specific melee gating based on snipe fallback target if any
+  float sdx_t = 0.f, sdy_t = 0.f;
+  float s_d2_t = std::numeric_limits<float>::max();
+  if (snipe_have_target) {
+    sdx_t = snipe_tpos[0] - me_x; sdy_t = snipe_tpos[1] - me_y;
+    s_d2_t = sdx_t*sdx_t + sdy_t*sdy_t;
+  }
+  const bool snipe_in_auto_melee_range = snipe_have_target && (s_d2_t <= (kAutoMeleeHU * kAutoMeleeHU));
+
+  const bool snipe_possible = ctx.scheduler_enabled && ctx.snipe_enabled && snipe_have_target && !ctx.melee_equipped && !snipe_in_auto_melee_range;
+  const bool chase_possible = ctx.scheduler_enabled && ctx.chase_enabled && have_target && (!ctx.chase_only_when_melee || ctx.melee_equipped);
+
+  // Compute desired snipe ring point around target (preferred range)
+  auto compute_snipe_goal = [&](float out[3]) {
+    const float rx = me_x - snipe_tpos[0];
+    const float ry = me_y - snipe_tpos[1];
+    const float rz = me_z - snipe_tpos[2];
+    float r2 = rx*rx + ry*ry + rz*rz;
+    float r = r2 > 1e-3f ? std::sqrt(r2) : 0.f;
+    float desired = ctx.snipe_preferred_range;
+    if (desired < 100.f) desired = 100.f;
+    float nx, ny, nz;
+    if (r > 1e-3f) {
+      nx = rx / r; ny = ry / r; nz = rz / r;
+    } else {
+      nx = 1.f; ny = 0.f; nz = 0.f; // arbitrary if overlapping
+    }
+    out[0] = snipe_tpos[0] + nx * desired;
+    out[1] = snipe_tpos[1] + ny * desired;
+    out[2] = snipe_tpos[2] + nz * 0.f; // keep roughly same height preference; let nav nearest choose floor
+  };
+
+  // Compute an angle-searched goal that has LOS to the target's head. Returns true on success.
+  auto compute_snipe_goal_los = [&](float out[3]) -> bool {
+    if (!engine_trace || !entity_list) return false;
+    Player* me_ent = entity_list->get_localplayer();
+    if (!me_ent) return false;
+    Player* tgt = entity_list->player_from_index(snipe_tidx);
+    if (!tgt) return false;
+
+    // Target head position
+    int head_bone = tgt->get_head_bone();
+    Vec3 t_head = tgt->get_bone_pos(head_bone);
+    t_head.z += 4.0f;
+
+    // We'll sample around the target on multiple radii, including inside preferred range
+    const float desired = std::max(100.0f, ctx.snipe_preferred_range);
+    const float radii[] = {
+      desired,
+      desired * 1.25f,
+      desired * 0.75f,
+      desired * 1.5f,
+      std::max(300.0f, desired * 0.6f),
+      std::max(300.0f, desired * 0.4f)
+    };
+    // Base angle: from target to me
+    float base_dx = me_x - snipe_tpos[0];
+    float base_dy = me_y - snipe_tpos[1];
+    float base_ang = std::atan2(base_dy, base_dx);
+
+    // Eye height approximation when evaluating candidate LOS
+    const float kEyeH = 64.0f;
+
+    // Prepare trace filter to skip self
+    trace_filter filter{};
+    engine_trace->init_trace_filter(&filter, (void*)me_ent);
+
+    bool found = false;
+    float best_cost = std::numeric_limits<float>::max();
+    float best_goal[3] = {0.f, 0.f, 0.f};
+
+    // Prefer near-side angles first: sweep around the circle
+    const int kSamples = 12;
+    for (float r : radii) {
+      for (int i = 0; i < kSamples; ++i) {
+        float ang = base_ang + (static_cast<float>(i) * (2.0f * 3.14159265f / kSamples));
+        float gx = snipe_tpos[0] + std::cos(ang) * r;
+        float gy = snipe_tpos[1] + std::sin(ang) * r;
+        float gz = snipe_tpos[2];
+
+        // Candidate eye pos
+        Vec3 start = {gx, gy, gz + kEyeH};
+        Vec3 end = t_head;
+        ray_t ray = engine_trace->init_ray(&start, &end);
+        trace_t tr{};
+        // Use a visibility-friendly mask including solids and hitboxes
+        unsigned int mask = MASK_SOLID | CONTENTS_GRATE | CONTENTS_WINDOW | CONTENTS_IGNORE_NODRAW_OPAQUE | CONTENTS_HITBOX;
+        engine_trace->trace_ray(&ray, mask, &filter, &tr);
+
+        bool visible = (tr.fraction >= 0.99f) || (tr.entity == (void*)tgt);
+        if (!visible) continue;
+
+        // Cost: distance from our current pos + deviation from desired range
+        float ddx = gx - me_x; float ddy = gy - me_y;
+        float travel_cost = ddx*ddx + ddy*ddy; // 2D squared distance to minimize detours
+        float range_dev = std::fabs(r - desired);
+        float cost = travel_cost + (range_dev * range_dev);
+        if (cost < best_cost) {
+          best_cost = cost;
+          best_goal[0] = gx; best_goal[1] = gy; best_goal[2] = gz;
+          found = true;
+        }
+      }
+      if (found) break; // accept first radius that yields LOS
+    }
+
+    if (found) {
+      out[0] = best_goal[0]; out[1] = best_goal[1]; out[2] = best_goal[2];
+      return true;
+    }
+    return false;
+  };
+
+  // FindAmmo: plan to nearest ammo pack entity. Returns true if a plan was set.
+  auto try_find_ammo = [&]() -> bool {
+    if (!entity_list) return false;
+    // Only seek ammo if we actually need it (clip-based check for now)
+    Player* me = entity_list->get_localplayer();
+    if (!me || !me->needs_ammo()) return false; // TODO: switch to GetAmmoCount-based logic later
+    int max_e = entity_list->get_max_entities();
+    if (max_e <= 0) return false;
+    float best_d2 = std::numeric_limits<float>::max();
+    Vec3 best_pos = {};
+    bool found = false;
+    for (int i = 0; i < max_e; ++i) {
+      Entity* e = entity_list->entity_from_index(i);
+      if (!e) continue;
+      if (e->is_dormant()) continue;
+      if (e->get_pickup_type() != pickup_type::AMMOPACK) continue;
+      Vec3 p = e->get_origin();
+      float d2 = dist2_2d(me_x, me_y, p.x, p.y);
+      if (d2 < best_d2) { best_d2 = d2; best_pos = p; found = true; }
+    }
+    if (!found) return false;
+    if (nav::navbot::PlanToPositionFrom(me_x, me_y, me_z, best_pos.x, best_pos.y, best_pos.z, cmd_number)) {
+      g_task = TaskKind::GetAmmo;
+      return true;
+    }
+    return false;
+  };
+
+  // Precompute ammo need and try to plan for it once. This makes GetAmmo highest priority.
+  bool attempted_get_ammo = false;
+  bool get_ammo_active = false;
+  if (ctx.scheduler_enabled && entity_list) {
+    Player* me_lp = entity_list->get_localplayer();
+    if (me_lp && me_lp->needs_ammo()) {
+      attempted_get_ammo = true;
+      get_ammo_active = try_find_ammo();
+    }
+  }
+
+  // Shared chase planner (melee). Returns true if it set a chase task/goal.
+  auto try_chase_melee = [&]() -> bool {
+    // Distance gate for melee chase
+    float dx_d = tpos[0] - me_x, dy_d = tpos[1] - me_y;
+    float d2_d = dx_d*dx_d + dy_d*dy_d;
+    float max_d = ctx.chase_distance_max; if (max_d < 1.f) max_d = 1.f;
+    if (d2_d <= (max_d * max_d)) {
+      int dt = cmd_number - g_roam.last_plan_tick;
+      float gdx = tpos[0] - g_chase.last_goal[0];
+      float gdy = tpos[1] - g_chase.last_goal[1];
+      float gdz = tpos[2] - g_chase.last_goal[2];
+      float moved2 = gdx*gdx + gdy*gdy + gdz*gdz;
+      float move_thresh = ctx.chase_replan_move_threshold; if (move_thresh < 1.f) move_thresh = 1.f;
+      bool need_replan = (tidx != g_chase.last_target_idx) || (dt >= ctx.chase_repath_ticks) || (moved2 > (move_thresh * move_thresh));
+
+      if (need_replan) {
+        if (nav::navbot::PlanToPositionFrom(me_x, me_y, me_z, tpos[0], tpos[1], tpos[2], cmd_number)) {
+          g_chase.last_target_idx = tidx;
+          g_roam.last_plan_tick = cmd_number;
+          g_chase.last_goal[0] = tpos[0]; g_chase.last_goal[1] = tpos[1]; g_chase.last_goal[2] = tpos[2];
+          g_chase.active = true;
+          g_task = TaskKind::ChaseMelee;
+          return true;
+        }
+      } else {
+        g_chase.active = true; // continue chasing with current goal
+        g_task = TaskKind::ChaseMelee;
+        return true;
+      }
+    } else if (g_chase.active) {
+      nav::navbot::ClearGoal();
+      g_chase.active = false;
+    }
+    return false;
+  };
+
+  if (get_ammo_active) {
+    // Committed to fetching ammo; cancel any chase intent
+    if (g_chase.active) { nav::navbot::ClearGoal(); g_chase.active = false; }
+  } else if (ctx.melee_equipped) {
+    // With melee out: do not snipe.
+    if (chase_possible) {
+      (void)try_chase_melee();
+      if (g_chase.active) {
+        g_task = TaskKind::ChaseMelee;
+      } else {
+        g_task = attempted_get_ammo ? TaskKind::GetAmmo : TaskKind::Roam;
+      }
+    } else {
+      if (g_chase.active) { nav::navbot::ClearGoal(); g_chase.active = false; }
+      g_task = attempted_get_ammo ? TaskKind::GetAmmo : TaskKind::Roam;
+    }
+  } else if (snipe_possible) {
+    float goal[3];
+    if (!compute_snipe_goal_los(goal)) {
+      // Fallback to simple ring goal if LOS search failed
+      compute_snipe_goal(goal);
+    }
+    int dt = cmd_number - g_roam.last_plan_tick;
+    float gdx = goal[0] - g_chase.last_goal[0];
+    float gdy = goal[1] - g_chase.last_goal[1];
+    float gdz = goal[2] - g_chase.last_goal[2];
+    float moved2 = gdx*gdx + gdy*gdy + gdz*gdz;
+    float move_thresh = ctx.snipe_replan_move_threshold; if (move_thresh < 1.f) move_thresh = 1.f;
+    bool need_replan = (snipe_tidx != g_chase.last_target_idx) || (dt >= ctx.snipe_repath_ticks) || (moved2 > (move_thresh * move_thresh));
+
+    if (need_replan) {
+      if (nav::navbot::PlanToPositionFrom(me_x, me_y, me_z, goal[0], goal[1], goal[2], cmd_number)) {
+        g_chase.last_target_idx = snipe_tidx;
+        g_roam.last_plan_tick = cmd_number;
+        g_chase.last_goal[0] = goal[0]; g_chase.last_goal[1] = goal[1]; g_chase.last_goal[2] = goal[2];
+        g_chase.active = true;
+        g_task = TaskKind::Snipe;
+      } else {
+        // Keep intent to Snipe even if a replan fails this tick (avoid flicker to Roam)
+        g_task = TaskKind::Snipe;
+      }
+    } else {
+      g_chase.active = true;
+      g_task = TaskKind::Snipe;
+    }
+  } else if (chase_possible) {
+    (void)try_chase_melee();
+    if (g_chase.active) {
+      g_task = TaskKind::ChaseMelee;
+    } else {
+      // Keep intent rather than flicker to Roam if we just failed a plan this tick
+      g_task = (g_prev_task == TaskKind::ChaseMelee) ? TaskKind::ChaseMelee : TaskKind::Roam;
+    }
+  } else if (g_chase.active) {
+    nav::navbot::ClearGoal();
+    g_chase.active = false;
+    g_task = TaskKind::Roam;
+  } else {
+    // No snipe/chase path set this tick. If a target exists (or within grace), keep previous combat task label
+    if (have_target) {
+      if (g_prev_task == TaskKind::Snipe || g_prev_task == TaskKind::ChaseMelee) {
+        g_task = g_prev_task;
+      }
+    }
+  }
+
   if (cur_area) {
     if (cur_area->id != g_roam.last_area_id) {
       visited_add(cur_area->id);
@@ -313,12 +713,16 @@ bool Tick(float me_x, float me_y, float me_z, int cmd_number, RoamOutput* out) {
     g_roam.last_pos_tick = cmd_number;
     g_roam.last_pos_valid = true;
     nav::Visualizer_SetPath(g_roam.path_ids, g_roam.next_index, g_roam.goal_id);
+    if (out) out->task = g_task;
     return out && out->have_waypoint;
   }
 
-  if (!g_roam.goal_id && cmd_number >= g_roam.replan_cooldown_until) {
-    if (g_roam.last_plan_tick == 0 || (cmd_number - g_roam.last_plan_tick) >= 132) {
-      pick_new_goal_randomized(cur_area, me_x, me_y, me_z, cmd_number);
+  // If we're actually Roaming, ensure we have a roam goal
+  if (g_task == TaskKind::Roam && !g_chase.active) {
+    if (!g_roam.goal_id && cmd_number >= g_roam.replan_cooldown_until) {
+      if (g_roam.last_plan_tick == 0 || (cmd_number - g_roam.last_plan_tick) >= 132) {
+        pick_new_goal_randomized(cur_area, me_x, me_y, me_z, cmd_number);
+      }
     }
   }
 
@@ -411,6 +815,7 @@ bool Tick(float me_x, float me_y, float me_z, int cmd_number, RoamOutput* out) {
         out->goal_area_id = g_roam.goal_id;
         out->next_index = g_roam.next_index;
         out->perform_crouch_jump = g_roam.antistuck_active;
+        out->task = g_task;
       }
     }
   }
@@ -419,6 +824,8 @@ bool Tick(float me_x, float me_y, float me_z, int cmd_number, RoamOutput* out) {
   g_roam.last_pos_tick = cmd_number;
   g_roam.last_pos_valid = true;
   nav::Visualizer_SetPath(g_roam.path_ids, g_roam.next_index, g_roam.goal_id);
+  if (out) out->task = g_task;
+  g_prev_task = g_task;
   return out && out->have_waypoint;
 }
 

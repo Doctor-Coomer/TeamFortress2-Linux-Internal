@@ -6,6 +6,7 @@
 #include "../gui/config.hpp"
 
 #include "../classes/player.hpp"
+#include "../classes/weapon.hpp"
 #include "../print.hpp"
 
 #include <cstdlib>
@@ -16,6 +17,7 @@
 #include "../hacks/navmesh/navengine.hpp"
 
 
+#include "../hacks/aimbot/aimbot.hpp"
 #include "../hacks/aimbot/aimbot.cpp"
  
 bool (*client_mode_create_move_original)(void*, float, user_cmd*);
@@ -44,6 +46,39 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
     
     
     aimbot(user_cmd);
+    if (config.aimbot.autoscope) {
+      Weapon* weapon = localplayer->get_weapon();
+      if (weapon && weapon->is_sniper_rifle()) {
+        bool aim_key_down = ((is_button_down(config.aimbot.key) && config.aimbot.use_key) || !config.aimbot.use_key);
+        if (aim_key_down) {
+          float threshold = config.aimbot.autoscope_distance;
+          bool want_scoped = false;
+          Vec3 meo = localplayer->get_origin();
+          int max_e = entity_list->get_max_entities();
+          for (int i = 1; i <= max_e; ++i) {
+            Player* p = entity_list->player_from_index(i);
+            if (!p || p == localplayer) continue;
+            if (p->is_dormant()) continue;
+            if (p->get_team() == localplayer->get_team()) continue;
+            if (p->get_lifestate() != 1) continue;
+            Vec3 to  = p->get_origin();
+            float dx = to.x - meo.x;
+            float dy = to.y - meo.y;
+            float dz = to.z - meo.z;
+            float d2 = dx*dx + dy*dy + dz*dz;
+            if (d2 <= threshold * threshold) { want_scoped = true; break; }
+          }
+          bool is_scoped = localplayer->is_scoped();
+          static int last_zoom_toggle_cmd = 0;
+          if (want_scoped != is_scoped && weapon->can_secondary_attack()) {
+            if (user_cmd->command_number - last_zoom_toggle_cmd > 2) {
+              user_cmd->buttons |= IN_ATTACK2;
+              last_zoom_toggle_cmd = user_cmd->command_number;
+            }
+          }
+        }
+      }
+    }
       
     static bool bStaticJump = false, bStaticGrounded = false, bLastAttempted = false;
     const bool bLastJump = bStaticJump;

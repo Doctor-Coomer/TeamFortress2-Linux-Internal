@@ -52,6 +52,39 @@ void draw_aim_tab() {
   ImGui::Checkbox("Draw FOV", &config.aimbot.draw_fov);
 
   ImGui::Checkbox("Ignore Friends", &config.aimbot.ignore_friends);
+
+  ImGui::Separator();
+  ImGui::Text("Modules");
+  ImGui::Checkbox("Hitscan", &config.aimbot.hitscan.enabled);
+  ImGui::SameLine();
+  // coomer pls add multidropdowns
+  ImGui::BeginGroup();
+  ImGui::Text("Hitscan Modifiers");
+  bool hitscan_scoped_only = (config.aimbot.hitscan.modifiers & Aim::Hitscan::ScopedOnly) != 0;
+  if (ImGui::Checkbox("Scoped Only##Hitscan", &hitscan_scoped_only)) {
+    if (hitscan_scoped_only) config.aimbot.hitscan.modifiers |= Aim::Hitscan::ScopedOnly;
+    else                     config.aimbot.hitscan.modifiers &= ~Aim::Hitscan::ScopedOnly;
+  }
+  ImGui::SameLine();
+  bool hitscan_wait_hs = (config.aimbot.hitscan.modifiers & Aim::Hitscan::WaitForHeadshot) != 0;
+  if (ImGui::Checkbox("Wait for Headshot##Hitscan", &hitscan_wait_hs)) {
+    if (hitscan_wait_hs) config.aimbot.hitscan.modifiers |= Aim::Hitscan::WaitForHeadshot;
+    else                 config.aimbot.hitscan.modifiers &= ~Aim::Hitscan::WaitForHeadshot;
+  }
+  ImGui::EndGroup();
+  ImGui::Checkbox("Projectile", &config.aimbot.projectile.enabled);
+  ImGui::Checkbox("Melee", &config.aimbot.melee.enabled);
+
+  const char* hitbox_items[] = { "Chest", "Head" };
+  ImGui::Text("Hitscan Hitbox");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(120);
+  ImGui::Combo("##HitscanHitbox", &config.aimbot.hitscan.hitbox, hitbox_items, IM_ARRAYSIZE(hitbox_items));
+
+  ImGui::Text("Projectile Hitbox");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(120);
+  ImGui::Combo("##ProjectileHitbox", &config.aimbot.projectile.hitbox, hitbox_items, IM_ARRAYSIZE(hitbox_items));
   
   ImGui::EndGroup();  
 }
@@ -198,10 +231,10 @@ void draw_nav_tab() {
 
   if (config.nav.master) {
     ImGui::Checkbox("Enable nav engine", &config.nav.engine_enabled);
-    ImGui::Checkbox("3D visualizer", &config.nav.visualizer_3d);
+    ImGui::Checkbox("Navmesh visualizer", &config.nav.visualize_navmesh);
+    ImGui::Checkbox("Path visualization", &config.nav.visualize_path);
 
-    ImGui::Checkbox("Roam movement", &config.nav.roam);
-    ImGui::InputInt("Target area id", &config.nav.target_area_id);
+    ImGui::Checkbox("Navbot", &config.nav.navbot);
 
     ImGui::Separator();
     ImGui::Text("View");
@@ -210,6 +243,34 @@ void draw_nav_tab() {
     ImGui::Checkbox("Smoothed##LookAtPath", &config.nav.look_at_path_smoothed);
 
     ImGui::Separator();
+    ImGui::Text("Tasks");
+    ImGui::Checkbox("Snipe enemies", &config.nav.snipe_enemies);
+    ImGui::Text("Snipe Preferred Range per Class (HU)");
+    ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Scout##SnipeRange", &config.nav.snipe_range.scout, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Soldier##SnipeRange", &config.nav.snipe_range.soldier, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Pyro##SnipeRange", &config.nav.snipe_range.pyro, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Demoman##SnipeRange", &config.nav.snipe_range.demoman, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Heavy##SnipeRange", &config.nav.snipe_range.heavy, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Engineer##SnipeRange", &config.nav.snipe_range.engineer, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Medic##SnipeRange", &config.nav.snipe_range.medic, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Sniper##SnipeRange", &config.nav.snipe_range.sniper, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SliderFloat("Spy##SnipeRange", &config.nav.snipe_range.spy, 300.0f, 1800.0f, "%.0f HU");
+    ImGui::Text("Snipe Planner");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(120);
+    ImGui::SliderInt("Repath Ticks##Snipe", &config.nav.snipe_repath_ticks, 1, 32);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(140);
+    ImGui::SliderFloat("Replan Move##Snipe", &config.nav.snipe_replan_move_threshold, 16.0f, 256.0f, "%.0f HU");
 
     if (config.nav.engine_enabled) {
       if (nav::IsLoaded()) {

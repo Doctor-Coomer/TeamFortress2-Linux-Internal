@@ -23,6 +23,7 @@
 #include "../../print.hpp"
 #include "../../vec.hpp"
 #include "../aimbot/aimbot.hpp"
+#include "../../hooks/weapon_groups.hpp"
 
 namespace nav {
 
@@ -34,6 +35,10 @@ static std::vector<uint32_t> g_vis_path_ids;
 static size_t g_vis_next_index = 0;
 static uint32_t g_vis_goal = 0;
 static Vec3 g_last_look_angles = {};
+static nav::navbot::TaskKind g_last_task = nav::navbot::TaskKind::Roam;
+// we gonna replace that
+static int g_last_weapon_slot_selected = 0;
+static int g_weapon_switch_cooldown = 0;
 
 static std::string Dirname(const std::string &path) {
   size_t pos = path.find_last_of('/');
@@ -86,6 +91,18 @@ bool LoadForMapName(const std::string &map_name) {
   return true;
 }
 
+static const char* TaskKindToString(nav::navbot::TaskKind k) {
+  switch (k) {
+    case nav::navbot::TaskKind::Roam: return "Roam";
+    case nav::navbot::TaskKind::Snipe: return "Snipe";
+    case nav::navbot::TaskKind::ChaseMelee: return "ChaseMelee";
+    case nav::navbot::TaskKind::GetHealth: return "GetHealth";
+    case nav::navbot::TaskKind::GetAmmo: return "GetAmmo";
+    case nav::navbot::TaskKind::Retreat: return "Retreat";
+    default: return "Unknown";
+  }
+}
+
 void Draw() {
   if (!g_draw_enabled) return;
   (void)EnsureLoadedForCurrentLevel();
@@ -104,6 +121,11 @@ void Draw() {
       ImGui::Separator();
       ImGui::Text("Places: %zu", GetPlaceCount());
       ImGui::Text("Areas: %zu", GetAreaCount());
+      ImGui::Separator();
+      ImGui::Text("Task: %s", TaskKindToString(g_last_task));
+      if (g_last_weapon_slot_selected != 0) {
+        ImGui::Text("Slot: %d", g_last_weapon_slot_selected);
+      }
       // ImGui::Text("Ladders: %zu", GetLadderCount()); no ladders in tf2 xd
     } else {
       ImGui::Text("No navmesh loaded");
@@ -114,6 +136,39 @@ void Draw() {
   }
   ImGui::End();
 
+  if (config.nav.visualize_path && overlay) {
+    const std::vector<uint32_t>* ids = nullptr;
+    size_t next_idx = 0;
+    uint32_t goal_id = 0;
+    Visualizer_GetPath(&ids, &next_idx, &goal_id);
+    if (ids && !ids->empty()) {
+      auto* dl = ImGui::GetBackgroundDrawList();
+      auto get_center = [](uint32_t area_id, Vec3* out) -> bool {
+        const nav::Area* a = nav::path::GetAreaById(area_id);
+        if (!a) return false;
+        float c[3]; nav::path::GetAreaCenter(a, c);
+        out->x = c[0]; out->y = c[1]; out->z = c[2];
+        return true;
+      };
+      Vec3 wp3d1{}, wp2d1{}, wp3d2{}, wp2d2{};
+      for (size_t i = 0; i + 1 < ids->size(); ++i) {
+        if (!get_center((*ids)[i], &wp3d1) || !get_center((*ids)[i+1], &wp3d2)) continue;
+        if (!overlay->world_to_screen(&wp3d1, &wp2d1) || !overlay->world_to_screen(&wp3d2, &wp2d2)) continue;
+        ImU32 col = (i < next_idx) ? IM_COL32(160,160,160,180) : IM_COL32(40,220,90,200);
+        dl->AddLine(ImVec2(wp2d1.x, wp2d1.y), ImVec2(wp2d2.x, wp2d2.y), col, 2.0f);
+      }
+      if (next_idx < ids->size()) {
+        if (get_center((*ids)[next_idx], &wp3d1) && overlay->world_to_screen(&wp3d1, &wp2d1)) {
+          dl->AddCircleFilled(ImVec2(wp2d1.x, wp2d1.y), 4.0f, IM_COL32(255, 210, 20, 220), 8);
+        }
+      }
+      if (goal_id) {
+        if (get_center(goal_id, &wp3d1) && overlay->world_to_screen(&wp3d1, &wp2d1)) {
+          dl->AddCircle(ImVec2(wp2d1.x, wp2d1.y), 6.0f, IM_COL32(255, 60, 60, 220), 12, 1.8f);
+        }
+      }
+    }
+  }
 }
 
 void Visualizer_ClearPath() {
@@ -178,7 +233,7 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
       }
     }
 
-    if (config.nav.roam) {
+    if (config.nav.navbot) {
       auto clampf = [](float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); };
       auto ang_norm = [](float a) {
         a = std::fmod(a, 360.0f);
@@ -192,10 +247,65 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
       float orig_side = user_cmd->sidemove;
 
       Vec3 me = localplayer->get_origin();
-      nav::navbot::RoamOutput ro{};
-      if (nav::navbot::Tick(me.x, me.y, me.z, user_cmd->command_number, &ro) && ro.have_waypoint) {
-        float dx = ro.waypoint[0] - me.x;
-        float dy = ro.waypoint[1] - me.y;
+
+      nav::navbot::BotContext ctx{};
+      ctx.me[0] = me.x; ctx.me[1] = me.y; ctx.me[2] = me.z;
+      ctx.cmd_number = user_cmd->command_number;
+      ctx.scheduler_enabled = config.nav.scheduler_enabled;
+      ctx.snipe_enabled = config.nav.snipe_enemies;
+      {
+        float sr = config.nav.snipe_range.scout; // sensible default
+        switch (localplayer->get_tf_class()) {
+          case CLASS_SCOUT:       sr = config.nav.snipe_range.scout;    break;
+          case CLASS_SNIPER:      sr = config.nav.snipe_range.sniper;   break;
+          case CLASS_SOLDIER:     sr = config.nav.snipe_range.soldier;  break;
+          case CLASS_DEMOMAN:     sr = config.nav.snipe_range.demoman;  break;
+          case CLASS_MEDIC:       sr = config.nav.snipe_range.medic;    break;
+          case CLASS_HEAVYWEAPONS:sr = config.nav.snipe_range.heavy;    break;
+          case CLASS_PYRO:        sr = config.nav.snipe_range.pyro;     break;
+          case CLASS_SPY:         sr = config.nav.snipe_range.spy;      break;
+          case CLASS_ENGINEER:    sr = config.nav.snipe_range.engineer; break;
+          default: break;
+        }
+        ctx.snipe_preferred_range = sr;
+      }
+      ctx.snipe_repath_ticks = config.nav.snipe_repath_ticks;
+      ctx.snipe_replan_move_threshold = config.nav.snipe_replan_move_threshold;
+      ctx.chase_enabled = config.nav.chase_target;
+      ctx.chase_only_when_melee = config.nav.chase_only_melee;
+      ctx.chase_distance_max = config.nav.chase_distance_max;
+      ctx.chase_repath_ticks = config.nav.chase_repath_ticks;
+      ctx.chase_replan_move_threshold = config.nav.chase_replan_move_threshold;
+
+      {
+        Weapon* w = localplayer->get_weapon();
+        bool is_melee_w = false;
+        if (w) {
+          int type_id = w->get_type_id();
+          int def_id = w->get_def_id();
+          is_melee_w = weapon_groups::is_melee_type_id(type_id)
+                    || weapon_groups::is_melee_def_id(def_id)
+                    || weapon_groups::is_spy_knife_def_id(def_id);
+        }
+        ctx.melee_equipped = is_melee_w;
+      }
+
+      if (target_player && target_player->get_lifestate() == 1 && !target_player->is_dormant()) {
+        Vec3 tpos = target_player->get_origin();
+        ctx.have_target = true;
+        ctx.target_index = target_player->get_index();
+        ctx.target_pos[0] = tpos.x; ctx.target_pos[1] = tpos.y; ctx.target_pos[2] = tpos.z;
+      }
+
+      nav::navbot::BotOutput bo{};
+      bool tick_ok = nav::navbot::Tick(ctx, &bo);
+      if (bo.task != g_last_task) {
+        print("navbot: task -> %s\n", TaskKindToString(bo.task));
+        g_last_task = bo.task;
+      }
+      if (tick_ok && bo.have_waypoint) {
+        float dx = bo.waypoint[0] - me.x;
+        float dy = bo.waypoint[1] - me.y;
         float dist2 = dx*dx + dy*dy;
 
         float desired_yaw = std::atan2(dy, dx) * (180.0f / (float)M_PI);
@@ -203,26 +313,16 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
         float dyaw = ang_norm(desired_yaw - cur_yaw);
         float rad = dyaw * (float)M_PI / 180.0f;
 
-        float dist = std::sqrt(dist2);
-        float step = dist > 120.0f ? 120.0f : (dist > 60.0f ? 60.0f : 40.0f);
-        float dirx = std::cos(std::atan2(dy, dx));
-        float diry = std::sin(std::atan2(dy, dx));
-        Vec3 ahead = Vec3{ me.x + dirx * step, me.y + diry * step, me.z };
-        const float slope_lift = nav::reach::kZSlop; // modest lift to ignore tiny floor bumps
         bool forward_clear = true;
-        
         float speed = forward_clear ? 420.0f : 220.0f;
         float fwd = std::cos(rad) * speed;
         float side = -std::sin(rad) * speed;
-        
-        if (!forward_clear) {
-          fwd *= 0.35f;
-        }
+        if (!forward_clear) fwd *= 0.35f;
 
         user_cmd->forwardmove = clampf(fwd, -450.0f, 450.0f);
         user_cmd->sidemove = clampf(side, -450.0f, 450.0f);
 
-        if (ro.perform_crouch_jump) {
+        if (bo.perform_crouch_jump) {
           user_cmd->buttons |= IN_DUCK;
           if (localplayer->get_ground_entity()) {
             user_cmd->buttons |= IN_JUMP;
@@ -234,11 +334,11 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
         result.orig_forward = orig_forward;
         result.orig_side = orig_side;
 
-        bool aimbot_active_now = (config.aimbot.master && target_player != nullptr && ((!config.aimbot.use_key) || is_button_down(config.aimbot.key)));
-        if (config.nav.look_at_path && !aimbot_active_now) {
+        bool manual_shooting_now = ((user_cmd->buttons & IN_ATTACK) != 0) && !is_shooting;
+        if (config.nav.look_at_path && !is_shooting && !manual_shooting_now) {
           Vec3 eye = localplayer->get_shoot_pos();
-          float dy2 = ro.waypoint[1] - eye.y;
-          float dx2 = ro.waypoint[0] - eye.x;
+          float dy2 = bo.waypoint[1] - eye.y;
+          float dx2 = bo.waypoint[0] - eye.x;
           float desired_yaw2 = std::atan2(dy2, dx2) * (180.0f / (float)M_PI);
 
           if (config.nav.look_at_path_smoothed) {
@@ -256,6 +356,34 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
           user_cmd->view_angles.x = 0.0f;
           g_last_look_angles = user_cmd->view_angles;
           result.look_applied = true;
+        }
+      }
+
+      // replace it with actual autoweapon logic
+      {
+        if (g_weapon_switch_cooldown > 0) {
+          --g_weapon_switch_cooldown;
+        }
+
+        int desired_slot = 1;
+        const float melee_range = 120.0f;
+        bool melee_close = false;
+        if (target_player && target_player->get_lifestate() == 1 && !target_player->is_dormant()) {
+          Vec3 tpos = target_player->get_origin();
+          float dxm = tpos.x - me.x;
+          float dym = tpos.y - me.y;
+          float dzm = tpos.z - me.z;
+          float d2 = dxm*dxm + dym*dym + dzm*dzm;
+          melee_close = (d2 <= (melee_range * melee_range));
+        }
+        if (melee_close) desired_slot = 3;
+
+        if (desired_slot != g_last_weapon_slot_selected && g_weapon_switch_cooldown == 0) {
+          user_cmd->weapon_select = desired_slot;
+          user_cmd->weapon_subtype = 0;
+          g_last_weapon_slot_selected = desired_slot;
+          g_weapon_switch_cooldown = 12;
+          print("navbot: slot -> %d\n", desired_slot);
         }
       }
     }
