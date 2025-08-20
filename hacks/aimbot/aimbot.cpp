@@ -6,6 +6,19 @@
 #include <limits>
 #include <unordered_map>
 
+struct TargetCandidate {
+  Player* player;
+  Vec3 aim_angles;
+  float fov;
+  int bone;
+  bool visible;
+};
+
+typedef int (*BonePickerFn)(Player* local, Player* target, Weapon* weapon);
+static inline bool aim_key_active();
+static inline int bone_from_selector(Player* local, Player* target, int selector);
+static TargetCandidate find_best_target(Player* localplayer, Weapon* weapon, const Vec3& original_view_angle, float max_fov, bool friendlyfire, bool ignore_friends, BonePickerFn bone_picker);
+
 #include "aimbot_hitscan.cpp"
 #include "aimbot_projectile.cpp"
 #include "aimbot_melee.cpp"
@@ -102,16 +115,6 @@ static bool is_hitbox_valid(Player* target, int nHitbox /*bone index*/, int mask
 
   return false;
 }
-
-struct TargetCandidate {
-  Player* player;
-  Vec3 aim_angles;
-  float fov;
-  int bone;
-  bool visible;
-};
-
-typedef int (*BonePickerFn)(Player* local, Player* target, Weapon* weapon);
 
 static inline bool aim_key_active() {
   return ((is_button_down(config.aimbot.key) && config.aimbot.use_key) || !config.aimbot.use_key);
