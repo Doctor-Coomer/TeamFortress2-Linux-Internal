@@ -81,21 +81,6 @@ void entry() {
 
   prediction = (Prediction*)get_interface("./tf/bin/linux64/client.so", "VClientPrediction001");
 
-  if (!cfgio::EnsureDir()) {
-    if (const char* err = cfgio::GetLastError()) {
-      print("cfg dir error: %s\n", err);
-    }
-  }
-  if (!cfgio::Load("default")) {
-    if (!cfgio::Save("default")) {
-      if (const char* err = cfgio::GetLastError()) {
-        print("failed to save default config: %s\n", err);
-      }
-    } else {
-      cfgio::Load("default");
-    }
-  }
-
   steam_client = (SteamClient*)get_interface("../../../linux64/steamclient.so", "SteamClient020");
 
   int steam_pipe = steam_client->create_steam_pipe();
