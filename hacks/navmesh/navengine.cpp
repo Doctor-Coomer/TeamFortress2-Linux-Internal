@@ -36,9 +36,6 @@ static size_t g_vis_next_index = 0;
 static uint32_t g_vis_goal = 0;
 static Vec3 g_last_look_angles = {};
 static nav::navbot::TaskKind g_last_task = nav::navbot::TaskKind::Roam;
-// we gonna replace that
-static int g_last_weapon_slot_selected = 0;
-static int g_weapon_switch_cooldown = 0;
 
 static std::string Dirname(const std::string &path) {
   size_t pos = path.find_last_of('/');
@@ -97,7 +94,6 @@ static const char* TaskKindToString(nav::navbot::TaskKind k) {
     case nav::navbot::TaskKind::Snipe: return "Snipe";
     case nav::navbot::TaskKind::ChaseMelee: return "ChaseMelee";
     case nav::navbot::TaskKind::GetHealth: return "GetHealth";
-    case nav::navbot::TaskKind::GetAmmo: return "GetAmmo";
     case nav::navbot::TaskKind::Retreat: return "Retreat";
     default: return "Unknown";
   }
@@ -123,9 +119,6 @@ void Draw() {
       ImGui::Text("Areas: %zu", GetAreaCount());
       ImGui::Separator();
       ImGui::Text("Task: %s", TaskKindToString(g_last_task));
-      if (g_last_weapon_slot_selected != 0) {
-        ImGui::Text("Slot: %d", g_last_weapon_slot_selected);
-      }
       // ImGui::Text("Ladders: %zu", GetLadderCount()); no ladders in tf2 xd
     } else {
       ImGui::Text("No navmesh loaded");
@@ -245,7 +238,6 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
       Vec3 orig_view = user_cmd->view_angles;
       float orig_forward = user_cmd->forwardmove;
       float orig_side = user_cmd->sidemove;
-
       Vec3 me = localplayer->get_origin();
 
       nav::navbot::BotContext ctx{};
@@ -358,38 +350,43 @@ CreateMoveResult OnCreateMove(Player* localplayer, user_cmd* user_cmd) {
           result.look_applied = true;
         }
       }
+    }
+  }
+  if (engine && engine->is_in_game()) {
+    static int s_last_desired_slot = 0;
 
-      // replace it with actual autoweapon logic
-      // {
-      //   if (g_weapon_switch_cooldown > 0) {
-      //     --g_weapon_switch_cooldown;
-      //   }
+    const float kAutoMeleeHU = 300.0f;
+    bool have_target = false;
+    float target_dx = 0.f, target_dy = 0.f;
 
-      //   int desired_slot = 1;
-      //   const float melee_range = 120.0f;
-      //   bool melee_close = false;
-      //   if (target_player && target_player->get_lifestate() == 1 && !target_player->is_dormant()) {
-      //     Vec3 tpos = target_player->get_origin();
-      //     float dxm = tpos.x - me.x;
-      //     float dym = tpos.y - me.y;
-      //     float dzm = tpos.z - me.z;
-      //     float d2 = dxm*dxm + dym*dym + dzm*dzm;
-      //     melee_close = (d2 <= (melee_range * melee_range));
-      //   }
-      //   if (melee_close) desired_slot = 3;
+    if (target_player && target_player->get_lifestate() == 1 && !target_player->is_dormant()) {
+      Vec3 tpos = target_player->get_origin();
+      Vec3 mepos = localplayer->get_origin();
+      target_dx = tpos.x - mepos.x;
+      target_dy = tpos.y - mepos.y;
+      have_target = true;
+    }
 
-      //   if (desired_slot != g_last_weapon_slot_selected && g_weapon_switch_cooldown == 0) {
-      //     user_cmd->weapon_select = desired_slot;
-      //     user_cmd->weapon_subtype = 0;
-      //     g_last_weapon_slot_selected = desired_slot;
-      //     g_weapon_switch_cooldown = 12;
-      //     print("navbot: slot -> %d\n", desired_slot);
-      //   }
-      // }
+    float d2 = (target_dx * target_dx) + (target_dy * target_dy);
+    bool in_auto_melee_range = have_target && (d2 <= (kAutoMeleeHU * kAutoMeleeHU));
+
+    int desired_slot = in_auto_melee_range ? 3 : 1;
+
+    //for some reason it doesnt work??????????????
+    if (desired_slot != s_last_desired_slot) {
+      if (desired_slot == 1) {
+        engine->client_cmd_unrestricted("slot1");
+        engine->client_cmd("slot1");
+        engine->execute_client_cmd("slot1");
+      } else {
+        engine->client_cmd_unrestricted("slot3");
+        engine->client_cmd("slot3");
+        engine->execute_client_cmd("slot3");
+      }
+      s_last_desired_slot = desired_slot;
     }
   }
 
   return result;
 }
-
 } // namespace

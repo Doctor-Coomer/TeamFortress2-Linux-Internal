@@ -65,6 +65,14 @@ static TaskKind g_task = TaskKind::Roam;
 static TaskKind g_prev_task = TaskKind::Roam;
 static int g_target_grace_until = 0; // cmd_number until which we pretend target still exists
 
+struct SnipeState {
+  bool anchor_valid = false;
+  float anchor[3] = {0.f, 0.f, 0.f};
+  int   last_anchor_tick = 0;
+  int   min_hold_until = 0;
+};
+static SnipeState g_snipe;
+
 static inline float dist2_2d(float ax, float ay, float bx, float by) {
   float dx = ax - bx, dy = ay - by;
   return dx*dx + dy*dy;
@@ -252,6 +260,7 @@ void Reset() {
   g_roam = RoamState{};
   g_chase = ChaseState{};
   g_task = TaskKind::Roam;
+  g_snipe = SnipeState{};
   nav::Visualizer_ClearPath();
 }
 
@@ -542,45 +551,6 @@ bool Tick(const BotContext& ctx, BotOutput* out) {
     return false;
   };
 
-  // FindAmmo: plan to nearest ammo pack entity. Returns true if a plan was set.
-  auto try_find_ammo = [&]() -> bool {
-    if (!entity_list) return false;
-    // Only seek ammo if we actually need it (clip-based check for now)
-    Player* me = entity_list->get_localplayer();
-    if (!me || !me->needs_ammo()) return false; // TODO: switch to GetAmmoCount-based logic later
-    int max_e = entity_list->get_max_entities();
-    if (max_e <= 0) return false;
-    float best_d2 = std::numeric_limits<float>::max();
-    Vec3 best_pos = {};
-    bool found = false;
-    for (int i = 0; i < max_e; ++i) {
-      Entity* e = entity_list->entity_from_index(i);
-      if (!e) continue;
-      if (e->is_dormant()) continue;
-      if (e->get_pickup_type() != pickup_type::AMMOPACK) continue;
-      Vec3 p = e->get_origin();
-      float d2 = dist2_2d(me_x, me_y, p.x, p.y);
-      if (d2 < best_d2) { best_d2 = d2; best_pos = p; found = true; }
-    }
-    if (!found) return false;
-    if (nav::navbot::PlanToPositionFrom(me_x, me_y, me_z, best_pos.x, best_pos.y, best_pos.z, cmd_number)) {
-      g_task = TaskKind::GetAmmo;
-      return true;
-    }
-    return false;
-  };
-
-  // Precompute ammo need and try to plan for it once. This makes GetAmmo highest priority.
-  bool attempted_get_ammo = false;
-  bool get_ammo_active = false;
-  if (ctx.scheduler_enabled && entity_list) {
-    Player* me_lp = entity_list->get_localplayer();
-    if (me_lp && me_lp->needs_ammo()) {
-      attempted_get_ammo = true;
-      get_ammo_active = try_find_ammo();
-    }
-  }
-
   // Shared chase planner (melee). Returns true if it set a chase task/goal.
   auto try_chase_melee = [&]() -> bool {
     // Distance gate for melee chase
@@ -617,35 +587,61 @@ bool Tick(const BotContext& ctx, BotOutput* out) {
     return false;
   };
 
-  if (get_ammo_active) {
-    // Committed to fetching ammo; cancel any chase intent
-    if (g_chase.active) { nav::navbot::ClearGoal(); g_chase.active = false; }
-  } else if (ctx.melee_equipped) {
+  if (ctx.melee_equipped) {
     // With melee out: do not snipe.
     if (chase_possible) {
       (void)try_chase_melee();
       if (g_chase.active) {
         g_task = TaskKind::ChaseMelee;
       } else {
-        g_task = attempted_get_ammo ? TaskKind::GetAmmo : TaskKind::Roam;
+        g_task = TaskKind::Roam;
       }
     } else {
       if (g_chase.active) { nav::navbot::ClearGoal(); g_chase.active = false; }
-      g_task = attempted_get_ammo ? TaskKind::GetAmmo : TaskKind::Roam;
+      g_task = TaskKind::Roam;
     }
   } else if (snipe_possible) {
-    float goal[3];
-    if (!compute_snipe_goal_los(goal)) {
-      // Fallback to simple ring goal if LOS search failed
-      compute_snipe_goal(goal);
+    float cand[3];
+    bool got_los = compute_snipe_goal_los(cand);
+    if (!got_los) {
+      compute_snipe_goal(cand);
     }
+
+    const int kMinHoldTicks = 20; // ~0.3s at 66tps
+    float move_thresh_base = ctx.snipe_replan_move_threshold; if (move_thresh_base < 1.f) move_thresh_base = 1.f;
+    const float anchor_soft = move_thresh_base * 1.75f;
+    const float anchor_hard = move_thresh_base * 3.0f;
+
+    bool target_changed = (snipe_tidx != g_chase.last_target_idx);
+    if (!g_snipe.anchor_valid || target_changed) {
+      g_snipe.anchor_valid = true;
+      g_snipe.anchor[0] = cand[0]; g_snipe.anchor[1] = cand[1]; g_snipe.anchor[2] = cand[2];
+      g_snipe.last_anchor_tick = cmd_number;
+      g_snipe.min_hold_until = cmd_number + kMinHoldTicks;
+    } else {
+      float adx = cand[0] - g_snipe.anchor[0];
+      float ady = cand[1] - g_snipe.anchor[1];
+      float adz = cand[2] - g_snipe.anchor[2];
+      float moved2_anchor = adx*adx + ady*ady + adz*adz;
+      bool can_change = (cmd_number >= g_snipe.min_hold_until);
+      if ((moved2_anchor > (anchor_hard * anchor_hard)) || (can_change && moved2_anchor > (anchor_soft * anchor_soft))) {
+        g_snipe.anchor[0] = cand[0]; g_snipe.anchor[1] = cand[1]; g_snipe.anchor[2] = cand[2];
+        g_snipe.last_anchor_tick = cmd_number;
+        g_snipe.min_hold_until = cmd_number + kMinHoldTicks;
+      }
+    }
+
+    float goal[3] = { g_snipe.anchor[0], g_snipe.anchor[1], g_snipe.anchor[2] };
+
     int dt = cmd_number - g_roam.last_plan_tick;
     float gdx = goal[0] - g_chase.last_goal[0];
     float gdy = goal[1] - g_chase.last_goal[1];
     float gdz = goal[2] - g_chase.last_goal[2];
     float moved2 = gdx*gdx + gdy*gdy + gdz*gdz;
     float move_thresh = ctx.snipe_replan_move_threshold; if (move_thresh < 1.f) move_thresh = 1.f;
-    bool need_replan = (snipe_tidx != g_chase.last_target_idx) || (dt >= ctx.snipe_repath_ticks) || (moved2 > (move_thresh * move_thresh));
+
+    int min_repath_ticks = std::max(ctx.snipe_repath_ticks, kMinHoldTicks);
+    bool need_replan = (snipe_tidx != g_chase.last_target_idx) || (dt >= min_repath_ticks) || (moved2 > (move_thresh * move_thresh));
 
     if (need_replan) {
       if (nav::navbot::PlanToPositionFrom(me_x, me_y, me_z, goal[0], goal[1], goal[2], cmd_number)) {

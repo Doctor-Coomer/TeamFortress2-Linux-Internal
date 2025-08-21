@@ -49,6 +49,26 @@ public:
     return get_player_info_fn(this, entity_index, pinfo);
   }
 
+  void client_cmd(const char* cmd) {
+    void** vtable = *(void ***)this;
+    void (*client_cmd_fn)(void*, const char*) = (void (*)(void*, const char*))vtable[7];
+    client_cmd_fn(this, cmd);
+  }
+
+  void client_cmd_unrestricted(const char* cmd) {
+    void** vtable = *(void ***)this;
+    void (*client_cmd_unrestricted_fn)(void*, const char*) =
+        (void (*)(void*, const char*))vtable[106];
+    client_cmd_unrestricted_fn(this, cmd);
+  }
+
+  void execute_client_cmd(const char* cmd) {
+    void** vtable = *(void ***)this;
+    void (*execute_client_cmd_fn)(void*, const char*) =
+        (void (*)(void*, const char*))vtable[102];
+    execute_client_cmd_fn(this, cmd);
+  }
+
 };
 
 static inline Engine* engine;

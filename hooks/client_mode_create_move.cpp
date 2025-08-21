@@ -13,12 +13,14 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <cstdio>
 
 #include "../hacks/navmesh/navengine.hpp"
 
 
 #include "../hacks/aimbot/aimbot.hpp"
 #include "../hacks/aimbot/aimbot.cpp"
+#include <SDL2/SDL_timer.h>
  
 bool (*client_mode_create_move_original)(void*, float, user_cmd*);
 
@@ -33,17 +35,46 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
   if (!engine->is_in_game()) {
     return rc;
   }
-
+ 
   Player* localplayer = entity_list->player_from_index(engine->get_localplayer_index());
+
+  if (config.misc.autojoin) {
+    static Uint32 s_lastAutoJoinTick = 0;
+    Uint32 now = SDL_GetTicks();
+    if (now - s_lastAutoJoinTick >= 1000) {
+      s_lastAutoJoinTick = now;
+      bool valid_team = false;
+      /* localplayer fetched above */
+      if (localplayer) {
+        int team = localplayer->get_team();
+        valid_team = (team == 2 || team == 3);
+      }
+      if (!valid_team) {
+        engine->client_cmd_unrestricted("team_ui_setup");
+        engine->client_cmd_unrestricted("menuopen");
+        engine->client_cmd_unrestricted("autoteam");
+        engine->client_cmd_unrestricted("menuclosed");
+      } else if (localplayer) {
+        int wantClass = config.misc.autojoin_class; // 1..9
+        if (wantClass > 0 && wantClass <= 9 && localplayer->get_tf_class() != wantClass) {
+          char cmd[64];
+          const char* token = TF2_CLASS_CMD_TOKENS[wantClass];
+          std::snprintf(cmd, sizeof(cmd), "joinclass %s", token);
+          engine->client_cmd_unrestricted(cmd);
+          engine->client_cmd_unrestricted("menuclosed");
+        }
+      }
+    }
+  }
 
   if (localplayer == nullptr) {
     print("localplayer is NULL\n");
     return rc;
   }
+
   nav::CreateMoveResult navRes{};
   
   if (user_cmd->tick_count > 1) {    
-    
     
     aimbot(user_cmd);
     if (config.aimbot.autoscope) {

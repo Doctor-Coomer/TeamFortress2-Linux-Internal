@@ -386,30 +386,6 @@ public:
     return true;
   }
 
-  // TODO: Switch to using GetAmmoCount (ammo reserve) if ur not fatass like me and want to get vtable for it haha
-  // temporary it just checks ammo in clip, like autoreload exists so i dont think an issue.
-  bool needs_ammo(void) {
-    Weapon* weapon = this->get_weapon();
-    if (!weapon)
-      return false;
-    if (weapon->is_melee())
-      return false;
-
-    int max_clip = weapon->get_clip1();
-    if (max_clip > 0) {
-      return weapon->get_clip1() < 2;
-    }
-
-    return false;
-  }
-
-  bool has_ammo(void) {
-    Weapon* weapon = this->get_weapon();
-    if (!weapon)
-      return false;
-    return weapon->has_primary_ammo();
-  }
-
   Entity* to_entity(void) {
     return (Entity*)this;
   }

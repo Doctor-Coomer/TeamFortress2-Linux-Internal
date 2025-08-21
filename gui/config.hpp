@@ -6,6 +6,13 @@
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_keyboard.h>
 
+inline static const char* TF2_CLASS_DISPLAY_NAMES[10] = {
+  "None", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"
+};
+inline static const char* TF2_CLASS_CMD_TOKENS[10] = {
+  "", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer"
+};
+
 struct button {
   int button;
   bool waiting = false;
@@ -99,6 +106,8 @@ struct Misc {
   bool bhop = true;
   bool bypasspure = true;
   bool no_push = false;
+  bool autojoin = false;
+  int autojoin_class = 0;
 };
 
 struct Nav {

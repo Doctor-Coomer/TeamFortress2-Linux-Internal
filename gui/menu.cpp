@@ -200,6 +200,13 @@ void draw_misc_tab() {
   ImGui::Checkbox("Bypass sv_pure", &config.misc.bypasspure);
   ImGui::Checkbox("No Push", &config.misc.no_push);  
 
+  ImGui::Separator();
+  ImGui::Checkbox("AutoJoin", &config.misc.autojoin);
+  ImGui::Text("Force Class");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(150);
+  ImGui::Combo("##AutoJoinClass", &config.misc.autojoin_class, TF2_CLASS_DISPLAY_NAMES, IM_ARRAYSIZE(TF2_CLASS_DISPLAY_NAMES));
+
   ImGui::EndGroup();
 }
 
@@ -239,36 +246,33 @@ void draw_nav_tab() {
     ImGui::Separator();
     ImGui::Text("View");
     ImGui::Checkbox("Look at path", &config.nav.look_at_path);
-    ImGui::SameLine();
     ImGui::Checkbox("Smoothed##LookAtPath", &config.nav.look_at_path_smoothed);
 
     ImGui::Separator();
     ImGui::Text("Tasks");
     ImGui::Checkbox("Snipe enemies", &config.nav.snipe_enemies);
     ImGui::Text("Snipe Preferred Range per Class (HU)");
-    ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Scout##SnipeRange", &config.nav.snipe_range.scout, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Soldier##SnipeRange", &config.nav.snipe_range.soldier, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Pyro##SnipeRange", &config.nav.snipe_range.pyro, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Demoman##SnipeRange", &config.nav.snipe_range.demoman, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Heavy##SnipeRange", &config.nav.snipe_range.heavy, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Engineer##SnipeRange", &config.nav.snipe_range.engineer, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Medic##SnipeRange", &config.nav.snipe_range.medic, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Sniper##SnipeRange", &config.nav.snipe_range.sniper, 300.0f, 1800.0f, "%.0f HU");
-    ImGui::SameLine(); ImGui::SetNextItemWidth(160);
+    ImGui::SetNextItemWidth(220);
     ImGui::SliderFloat("Spy##SnipeRange", &config.nav.snipe_range.spy, 300.0f, 1800.0f, "%.0f HU");
     ImGui::Text("Snipe Planner");
-    ImGui::SameLine();
     ImGui::SetNextItemWidth(120);
     ImGui::SliderInt("Repath Ticks##Snipe", &config.nav.snipe_repath_ticks, 1, 32);
-    ImGui::SameLine();
     ImGui::SetNextItemWidth(140);
     ImGui::SliderFloat("Replan Move##Snipe", &config.nav.snipe_replan_move_threshold, 16.0f, 256.0f, "%.0f HU");
 

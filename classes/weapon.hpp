@@ -922,42 +922,6 @@ public:
     return fn(this);
   }
 
-  int get_clip1(void) {
-    void** vtable = *(void***)this;
-    int (*fn)(void*) = (int (*)(void*))vtable[10];
-    return fn(this);
-  }
-
-  int get_clip2(void) {
-    void** vtable = *(void***)this;
-    int (*fn)(void*) = (int (*)(void*))vtable[11];
-    return fn(this);
-  }
-
-  int get_max_clip1(void) {
-    void** vtable = *(void***)this;
-    int (*fn)(void*) = (int (*)(void*))vtable[12];
-    return fn(this);
-  }
-
-  bool uses_clips_for_ammo1(void) {
-    void** vtable = *(void***)this;
-    bool (*fn)(void*) = (bool (*)(void*))vtable[13];
-    return fn(this);
-  }
-
-  // TODO: switch to WORKING ammo thing
-  bool has_primary_ammo(void) {
-    if (this->is_melee())
-      return true;
-    if (!this->uses_clips_for_ammo1())
-      return true;
-    return this->get_clip1() > 0;
-  }
-
-  bool is_out_of_primary_ammo(void) {
-    return !this->has_primary_ammo();
-  }
 
 };
 

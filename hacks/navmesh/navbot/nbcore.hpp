@@ -7,7 +7,7 @@
 
 namespace nav { namespace navbot {
 
-enum class TaskKind { Roam, Snipe, ChaseMelee, GetHealth, GetAmmo, Retreat };
+enum class TaskKind { Roam, Snipe, ChaseMelee, GetHealth, Retreat };
 
 struct BotContext {
   float me[3] = {0.f, 0.f, 0.f};

@@ -33,7 +33,7 @@ void watermark() {
     ImGui::SetNextWindowSize(ImVec2(150, 30));
     ImGui::Begin("a", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
     
-    ImGui::TextCentered("I Use Arch BTW!!!");
+    ImGui::TextCentered("I use debian BTW");
     ImGui::End();
 
   }
