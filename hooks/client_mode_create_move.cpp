@@ -35,6 +35,14 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
   if (!engine->is_in_game()) {
     return rc;
   }
+
+  if (menu_focused) {
+    user_cmd->buttons = 0;
+    user_cmd->forwardmove = 0.0f;
+    user_cmd->sidemove = 0.0f;
+    user_cmd->upmove = 0.0f;
+    return rc;
+  }
  
   Player* localplayer = entity_list->player_from_index(engine->get_localplayer_index());
 

@@ -4,13 +4,14 @@
 #include "imgui/imgui_internal.h"
 
 #include "imgui/dearimgui.hpp"
+#include "imgui/imgui_stdlib.h"
+
+#include <cstdio>
 
 #include <SDL2/SDL_mouse.h>
 #include "../hacks/navmesh/navparser.hpp"
 #include "../hacks/navmesh/navengine.hpp"
 #include "../interfaces/engine.hpp"
-
-inline static bool menu_focused = false;
 
 static ImGuiStyle orig_style;
 
@@ -19,20 +20,75 @@ void get_input(SDL_Event* event) {
   ImGui::KeybindEvent(event, &config.visuals.thirdperson.key.waiting, &config.visuals.thirdperson.key.button);
 }
 
-void draw_aim_tab() {
+void draw_config_tab() {
+  ImGui::BeginGroup();
 
-  ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 27);
-  
-  ImGui::Checkbox("Master", &config.aimbot.master);
+  static std::string cfg_name;
+  static std::vector<std::string> cfg_list;
+  static int selected = -1;
+  static char status_buf[256] = {0};
+  static ImVec4 status_col = ImVec4(0.7f, 0.7f, 0.7f, 1);
 
+  if (cfg_list.empty()) cfg_list = cfgio::List();
+
+  ImGui::SetNextItemWidth(-1);
+  ImGui::InputText("##CfgName", &cfg_name);
+  ImGui::Spacing();
+  if (ImGui::Button("Save")) {
+    if (!cfg_name.empty()) {
+      if (cfgio::Save(cfg_name)) {
+        cfg_list = cfgio::List();
+        std::snprintf(status_buf, sizeof(status_buf), "Saved '%s'", cfg_name.c_str());
+        status_col = ImVec4(0.4f, 1.0f, 0.4f, 1);
+      } else {
+        const char* err = cfgio::GetLastError();
+        std::snprintf(status_buf, sizeof(status_buf), "Save error: %s", err ? err : "unknown");
+        status_col = ImVec4(1.0f, 0.5f, 0.2f, 1);
+      }
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Load")) {
+    if (!cfg_name.empty()) {
+      if (cfgio::Load(cfg_name)) {
+        std::snprintf(status_buf, sizeof(status_buf), "Loaded '%s'", cfg_name.c_str());
+        status_col = ImVec4(0.4f, 1.0f, 0.4f, 1);
+      } else {
+        const char* err = cfgio::GetLastError();
+        std::snprintf(status_buf, sizeof(status_buf), "Load error: %s", err ? err : "unknown");
+        status_col = ImVec4(1.0f, 0.5f, 0.2f, 1);
+      }
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Refresh")) {
+    cfg_list = cfgio::List();
+    selected = -1;
+  }
+
+  if (ImGui::BeginCombo("Existing", (selected >= 0 && selected < (int)cfg_list.size()) ? cfg_list[selected].c_str() : "<none>")) {
+    for (int i = 0; i < (int)cfg_list.size(); ++i) {
+      const bool is_sel = (selected == i);
+      if (ImGui::Selectable(cfg_list[i].c_str(), is_sel)) {
+        selected = i;
+        cfg_name = cfg_list[i];
+      }
+      if (is_sel) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  if (status_buf[0]) {
+    ImGui::TextColored(status_col, "%s", status_buf);
+  }
+
+  ImGui::Separator();
+  ImGui::Text("Config files live in /opt/tuxbot");
 
   ImGui::EndGroup();
+}
 
-  ImGui::SameLine();
-  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-  ImGui::SameLine();
-
-
+void draw_aim_tab() {
   ImGui::BeginGroup();
 
   ImGui::Checkbox("Auto Shoot", &config.aimbot.auto_shoot);  
@@ -90,16 +146,6 @@ void draw_aim_tab() {
 }
 
 void draw_esp_tab() {  
-  ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 27);
-
-  ImGui::Checkbox("Master", &config.esp.master);
-
-  ImGui::EndGroup();
-
-  ImGui::SameLine();
-  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-  ImGui::SameLine();
-
   /* ESP */
   ImGui::BeginGroup();  
 
@@ -133,16 +179,6 @@ void draw_esp_tab() {
 }
 
 void draw_visuals_tab() {
-  ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 21);
-
-  ImGui::Text(" ");
-
-  ImGui::EndGroup();
-
-  ImGui::SameLine();
-  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-  ImGui::SameLine();
-
   /* Visuals */
   ImGui::BeginGroup();
 
@@ -183,18 +219,8 @@ void draw_visuals_tab() {
 }
 
 void draw_misc_tab() {
-  ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 21);
-
-  ImGui::Text(" ");
-
-  ImGui::EndGroup();
-
-  ImGui::SameLine();
-  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-  ImGui::SameLine();
-
   ImGui::BeginGroup();
-  
+
   ImGui::Text("General");
   ImGui::Checkbox("Bhop", &config.misc.bhop);
   ImGui::Checkbox("Bypass sv_pure", &config.misc.bypasspure);
@@ -211,30 +237,17 @@ void draw_misc_tab() {
 }
 
 void draw_nav_tab() {
-  ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 27);
+  ImGui::BeginGroup();
   
   bool in_game = engine && engine->is_in_game();
   
   if (!in_game) {
     ImGui::TextColored(ImVec4(1,0.6f,0.2f,1), "Nav features only available in-game");
-    ImGui::Text(" ");
-    ImGui::EndGroup();
-    ImGui::SameLine();
-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-    ImGui::SameLine();
-    ImGui::BeginGroup();
     ImGui::Text("Join a match to use navigation features");
     ImGui::EndGroup();
     return;
   }
   
-  ImGui::Checkbox("Master", &config.nav.master);
-  ImGui::EndGroup();
-  ImGui::SameLine();
-  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-  ImGui::SameLine();
-
-  ImGui::BeginGroup();
 
   if (config.nav.master) {
     ImGui::Checkbox("Enable nav engine", &config.nav.engine_enabled);
@@ -336,32 +349,61 @@ void draw_menu() {
     style->Colors[ImGuiCol_ButtonActive]     = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
     style->Colors[ImGuiCol_SliderGrab]       = ImVec4(0.869346734, 0.450980392, 0.211764706, 1);
     style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.899346734, 0.480980392, 0.241764706, 1);
-    
-    
-    ImGui::BeginGroup();
-    draw_tab(style, "Aimbot", &tab, 0);
-    draw_tab(style, "ESP", &tab, 1);
-    draw_tab(style, "Visuals", &tab, 2);
-    draw_tab(style, "Misc", &tab, 3);
-    draw_tab(style, "Nav", &tab, 4);
+    const float sidebar_w = 100.0f;
 
-    switch (tab) {
-    case 0:
-      draw_aim_tab();
-      break;
-    case 1:
-      draw_esp_tab();
-      break;      
-    case 2:
-      draw_visuals_tab();
-      break;
-    case 3:
-      draw_misc_tab();
-      break;
-    case 4:
-      draw_nav_tab();
-      break;
+    if (ImGui::BeginChild("Sidebar", ImVec2(sidebar_w, 0), true,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+      draw_tab(style, "Aimbot", &tab, 0);
+      draw_tab(style, "ESP", &tab, 1);
+      draw_tab(style, "Visuals", &tab, 2);
+      draw_tab(style, "Misc", &tab, 3);
+      draw_tab(style, "NavEngine", &tab, 4);
+      draw_tab(style, "Config", &tab, 5);
+
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+      switch (tab) {
+        case 0:
+          ImGui::Checkbox("Master", &config.aimbot.master);
+          break;
+        case 1:
+          ImGui::Checkbox("Master", &config.esp.master);
+          break;
+        case 4:
+          ImGui::Checkbox("Master", &config.nav.master);
+          break;
+        default:
+          break;
+      }
     }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    if (ImGui::BeginChild("Content", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+      switch (tab) {
+      case 0:
+        draw_aim_tab();
+        break;
+      case 1:
+        draw_esp_tab();
+        break;      
+      case 2:
+        draw_visuals_tab();
+        break;
+      case 3:
+        draw_misc_tab();
+        break;
+      case 4:
+        draw_nav_tab();
+        break;
+      case 5:
+        draw_config_tab();
+        break;
+      }
+    }
+    ImGui::EndChild();
   }
   
   ImGui::End();  

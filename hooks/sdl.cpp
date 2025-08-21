@@ -17,14 +17,35 @@ bool (*poll_event_original)(SDL_Event*) = NULL;
 
 
 bool poll_event_hook(SDL_Event* event) {
-  bool ret = poll_event_original(event);
+  while (true) {
+    bool ret = poll_event_original(event);
+    if (!ret)
+      return ret;
 
-  if (ret)
     ImGui_ImplSDL2_ProcessEvent(event);
-  
-  get_input(event);
-  
-  return ret;
+    get_input(event);
+
+    if (menu_focused) {
+      switch (event->type) {
+        case SDL_MOUSEMOTION:
+        case SDL_MOUSEBUTTONDOWN:
+        case SDL_MOUSEBUTTONUP:
+        case SDL_MOUSEWHEEL:
+        case SDL_KEYDOWN:
+        case SDL_KEYUP:
+        case SDL_TEXTINPUT:
+        case SDL_TEXTEDITING:
+          // swallow and continue polling next event
+          continue;
+        default:
+          // pass non-input events through
+          return ret;
+      }
+    }
+
+    // Menu not focused -> return first event
+    return ret;
+  }
 }
 
 void watermark() {
