@@ -21,6 +21,7 @@
 #include "hooks/hooks.cpp"
 #include "libsigscan/libsigscan.h"
 #include "funchook/funchook.h"
+#include "gui/config.hpp"
 
 #include "hooks/sdl.cpp"
 //#include "hooks/vulkan.cpp"
@@ -63,7 +64,7 @@ void entry() {
   input = (Input*)(*(void**)(next_instruction + input_eaddr));
 
   prediction = (Prediction*)get_interface("./tf/bin/linux64/client.so", "VClientPrediction001");
-  
+
   overlay = (DebugOverlay*)get_interface("./bin/linux64/engine.so", "VDebugOverlay003");
   
   entity_list = (EntityList*)get_interface("./tf/bin/linux64/client.so", "VClientEntityList003");
@@ -79,6 +80,21 @@ void entry() {
   convar_system = (ConvarSystem*)get_interface("./bin/linux64/libvstdlib.so", "VEngineCvar004");
 
   prediction = (Prediction*)get_interface("./tf/bin/linux64/client.so", "VClientPrediction001");
+
+  if (!cfgio::EnsureDir()) {
+    if (const char* err = cfgio::GetLastError()) {
+      print("cfg dir error: %s\n", err);
+    }
+  }
+  if (!cfgio::Load("default")) {
+    if (!cfgio::Save("default")) {
+      if (const char* err = cfgio::GetLastError()) {
+        print("failed to save default config: %s\n", err);
+      }
+    } else {
+      cfgio::Load("default");
+    }
+  }
 
   steam_client = (SteamClient*)get_interface("../../../linux64/steamclient.so", "SteamClient020");
 

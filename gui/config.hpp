@@ -37,7 +37,7 @@ struct Aim {
   struct button key = {.button = -SDL_BUTTON_X1};
   bool use_key = true;
   
-  float fov = 45;
+  float fov = 180;
   bool draw_fov = false;
 
   bool ignore_friends = true;
@@ -53,7 +53,7 @@ struct Aim {
     };
     int modifiers = 0;
     // 0 = Chest, 1 = Head
-    int hitbox = 0;
+    int hitbox = 1;
   } hitscan;
 
   struct Projectile {
@@ -97,13 +97,13 @@ struct Esp {
 struct Visuals {
 
   struct Removals {
-    bool scope = false;
-    bool zoom = false;
+    bool scope = true;
+    bool zoom = true;
   } removals;
   
   struct Thirdperson {
     struct button key = {.button = SDL_SCANCODE_LALT};
-    bool enabled = false;
+    bool enabled = true;
     float distance = 150.0f;
   } thirdperson;
   
@@ -114,9 +114,9 @@ struct Visuals {
 struct Misc {
   bool bhop = true;
   bool bypasspure = true;
-  bool no_push = false;
-  bool autojoin = false;
-  int autojoin_class = 0;
+  bool no_push = true;
+  bool autojoin = true;
+  int autojoin_class = 2;
 };
 
 struct Nav {
@@ -125,20 +125,20 @@ struct Nav {
   bool visualize_navmesh = false;
   bool visualize_path = false;
   bool navbot = true;
-  bool look_at_path = false;
-  bool look_at_path_smoothed = false;
+  bool look_at_path = true;
+  bool look_at_path_smoothed = true;
   bool scheduler_enabled = true;
   bool snipe_enemies = true;
   struct SnipeRangePerClass {
-    float scout    = 900.0f;
-    float sniper   = 900.0f;
+    float scout    = 400.0f;
+    float sniper   = 1600.0f;
     float soldier  = 900.0f;
     float demoman  = 900.0f;
     float medic    = 900.0f;
-    float heavy    = 900.0f;
-    float pyro     = 900.0f;
-    float spy      = 900.0f;
-    float engineer = 900.0f;
+    float heavy    = 600.0f;
+    float pyro     = 200.0f;
+    float spy      = 100.0f;
+    float engineer = 400.0f;
   } snipe_range;
   int   snipe_repath_ticks = 12;
   float snipe_replan_move_threshold = 96.0f;

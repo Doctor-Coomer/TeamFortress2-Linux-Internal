@@ -607,10 +607,9 @@ bool Tick(const BotContext& ctx, BotOutput* out) {
       compute_snipe_goal(cand);
     }
 
-    const int kMinHoldTicks = 20; // ~0.3s at 66tps
+    const int kMinHoldTicks = 528; // ~8s at 66tps
     float move_thresh_base = ctx.snipe_replan_move_threshold; if (move_thresh_base < 1.f) move_thresh_base = 1.f;
     const float anchor_soft = move_thresh_base * 1.75f;
-    const float anchor_hard = move_thresh_base * 3.0f;
 
     bool target_changed = (snipe_tidx != g_chase.last_target_idx);
     if (!g_snipe.anchor_valid || target_changed) {
@@ -624,7 +623,7 @@ bool Tick(const BotContext& ctx, BotOutput* out) {
       float adz = cand[2] - g_snipe.anchor[2];
       float moved2_anchor = adx*adx + ady*ady + adz*adz;
       bool can_change = (cmd_number >= g_snipe.min_hold_until);
-      if ((moved2_anchor > (anchor_hard * anchor_hard)) || (can_change && moved2_anchor > (anchor_soft * anchor_soft))) {
+      if (can_change && (moved2_anchor > (anchor_soft * anchor_soft))) {
         g_snipe.anchor[0] = cand[0]; g_snipe.anchor[1] = cand[1]; g_snipe.anchor[2] = cand[2];
         g_snipe.last_anchor_tick = cmd_number;
         g_snipe.min_hold_until = cmd_number + kMinHoldTicks;
@@ -641,7 +640,7 @@ bool Tick(const BotContext& ctx, BotOutput* out) {
     float move_thresh = ctx.snipe_replan_move_threshold; if (move_thresh < 1.f) move_thresh = 1.f;
 
     int min_repath_ticks = std::max(ctx.snipe_repath_ticks, kMinHoldTicks);
-    bool need_replan = (snipe_tidx != g_chase.last_target_idx) || (dt >= min_repath_ticks) || (moved2 > (move_thresh * move_thresh));
+    bool need_replan = (snipe_tidx != g_chase.last_target_idx) || (dt >= min_repath_ticks);
 
     if (need_replan) {
       if (nav::navbot::PlanToPositionFrom(me_x, me_y, me_z, goal[0], goal[1], goal[2], cmd_number)) {
