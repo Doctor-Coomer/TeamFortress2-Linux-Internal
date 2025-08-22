@@ -386,11 +386,9 @@ public:
     return true;
   }
 
-  
   Entity* to_entity(void) {
     return (Entity*)this;
   }
 };
 
 #endif
-

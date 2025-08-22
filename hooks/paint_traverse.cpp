@@ -115,35 +115,37 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
 
   do {
     if (!engine || !surface || !overlay) break;
-    if (!(config.nav.master && config.nav.engine_enabled && config.nav.visualizer_3d)) break;
+    if (!(config.nav.master && config.nav.engine_enabled)) break;
+    if (!(config.nav.visualize_navmesh || config.nav.visualize_path)) break;
 
     (void)nav::EnsureLoadedForCurrentLevel();
-
     if (!nav::IsLoaded()) break;
 
     const nav::Mesh* mesh = nav::GetMesh();
     if (!mesh) break;
 
-    surface->set_rgba(0, 255, 180, 160);
-    for (const auto& a : mesh->areas) {
-      Vec3 nw{a.nw[0], a.nw[1], a.nw[2]};
-      Vec3 ne{a.se[0], a.nw[1], a.ne_z};
-      Vec3 se{a.se[0], a.se[1], a.se[2]};
-      Vec3 sw{a.nw[0], a.se[1], a.sw_z};
+    if (config.nav.visualize_navmesh) {
+      surface->set_rgba(0, 255, 180, 160);
+      for (const auto& a : mesh->areas) {
+        Vec3 nw{a.nw[0], a.nw[1], a.nw[2]};
+        Vec3 ne{a.se[0], a.nw[1], a.ne_z};
+        Vec3 se{a.se[0], a.se[1], a.se[2]};
+        Vec3 sw{a.nw[0], a.se[1], a.sw_z};
 
-      Vec3 snw, sne, sse, ssw;
-      if (!(overlay->world_to_screen(&nw, &snw) && overlay->world_to_screen(&ne, &sne) &&
-            overlay->world_to_screen(&se, &sse) && overlay->world_to_screen(&sw, &ssw))) {
-        continue;
+        Vec3 snw, sne, sse, ssw;
+        if (!(overlay->world_to_screen(&nw, &snw) && overlay->world_to_screen(&ne, &sne) &&
+              overlay->world_to_screen(&se, &sse) && overlay->world_to_screen(&sw, &ssw))) {
+          continue;
+        }
+
+        surface->draw_line((int)snw.x, (int)snw.y, (int)sne.x, (int)sne.y);
+        surface->draw_line((int)sne.x, (int)sne.y, (int)sse.x, (int)sse.y);
+        surface->draw_line((int)sse.x, (int)sse.y, (int)ssw.x, (int)ssw.y);
+        surface->draw_line((int)ssw.x, (int)ssw.y, (int)snw.x, (int)snw.y);
       }
-
-      surface->draw_line((int)snw.x, (int)snw.y, (int)sne.x, (int)sne.y);
-      surface->draw_line((int)sne.x, (int)sne.y, (int)sse.x, (int)sse.y);
-      surface->draw_line((int)sse.x, (int)sse.y, (int)ssw.x, (int)ssw.y);
-      surface->draw_line((int)ssw.x, (int)ssw.y, (int)snw.x, (int)snw.y);
     }
 
-    do {
+    if (config.nav.visualize_path) do {
       const std::vector<uint32_t>* ids = nullptr;
       size_t next_idx = 0;
       uint32_t goal_id = 0;

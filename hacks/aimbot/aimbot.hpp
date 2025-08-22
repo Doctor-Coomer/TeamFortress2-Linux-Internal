@@ -5,4 +5,6 @@
 
 inline static Player* target_player = nullptr;
 
+extern bool is_shooting;
+
 #endif

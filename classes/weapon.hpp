@@ -910,6 +910,19 @@ public:
     return (next_secondary_attack <= time && next_attack <= time); 
   }
 
+  int get_primary_ammo_type(void) {
+    void** vtable = *(void***)this;
+    int (*fn)(void*) = (int (*)(void*))vtable[7];
+    return fn(this);
+  }
+
+  int get_secondary_ammo_type(void) {
+    void** vtable = *(void***)this;
+    int (*fn)(void*) = (int (*)(void*))vtable[8];
+    return fn(this);
+  }
+
+
 };
 
 #endif
