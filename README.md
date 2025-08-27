@@ -20,7 +20,7 @@ $ cd TeamFortress2-Linux-Internal/
 ### Install Dependencies
 Install the necessary packages.  
 ```bash
-$ sudo bash packages.sh
+$ ./packages/packages.sh
 [sudo] password for user:
 ...
 ```
