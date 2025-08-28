@@ -42,10 +42,15 @@ struct Esp {
     bool box = true;
     bool health_bar = true;    
     bool name = true;
+
+    int hb_pos = 0;
+    const char* hb_pos_items[2] = { "Left", "Right" };
     
     struct Flags {
       bool target_indicator = true;
       bool friend_indicator = true;
+      int pos = 0;
+      const char* pos_items[2] = { "Left", "Right" };
     } flags;
     
     bool friends = true;
