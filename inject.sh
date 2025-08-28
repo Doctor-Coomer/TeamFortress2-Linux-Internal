@@ -3,6 +3,11 @@
 LIB_PATH=$(pwd)/tf2.so
 PROCID=$(pgrep tf_linux64 | head -n 1)
 
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root"
+    exit 1
+fi
+
 if [ -z "$PROCID" ]; then
     echo "Please open game"
     exit 1

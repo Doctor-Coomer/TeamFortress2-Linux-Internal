@@ -19,21 +19,11 @@ $ cd TeamFortress2-Linux-Internal/
 
 ### Install Dependencies
 Install the necessary packages.  
-  
-Debian Advanced Package Tool (APT):  
 ```bash
-$ ./packages/debian.sh
+$ ./packages/packages.sh
 [sudo] password for user:
 ...
 ```
-  
-Arch Package Manager (pacman):  
-```bash
-$ ./packages/arch.sh
-[sudo] password for user:
-...
-```
-
 
 ### Compiling
 Build the program from source.  
