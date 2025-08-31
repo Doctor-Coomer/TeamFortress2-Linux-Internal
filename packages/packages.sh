@@ -3,13 +3,13 @@
 {
   if [ -f /etc/arch-release ]; then
     echo "Detected Arch Linux or derivative"
-    ./packages/distros/arch.sh
+    ./distros/arch.sh
   elif [ -f /etc/debian_version ]; then
     echo "Detected Debian/Ubuntu or derivative"
-    ./packages/distros/debian.sh
+    ./distros/debian.sh
   elif [ -f /etc/redhat-release ]; then
     echo "Detected Fedora/CentOS"
-    ./packages/distros/fedora.sh
+    ./distros/fedora.sh
   else
     echo "Unsupported Linux distribution."
     exit 1
