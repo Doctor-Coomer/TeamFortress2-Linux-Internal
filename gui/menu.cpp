@@ -26,8 +26,8 @@ void draw_aim_tab() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 
-
-  ImGui::BeginGroup();
+  ImGui::BeginChild("##AimbotMasterChild");
+  //ImGui::BeginGroup();
 
   ImGui::Checkbox("Auto Shoot", &config.aimbot.auto_shoot);  
 
@@ -49,7 +49,8 @@ void draw_aim_tab() {
   
   ImGui::Checkbox("Ignore Friends", &config.aimbot.ignore_friends);
   
-  ImGui::EndGroup();  
+  //ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
 void draw_esp_tab() {  
@@ -64,7 +65,8 @@ void draw_esp_tab() {
   ImGui::SameLine();
 
   /* ESP */
-  ImGui::BeginGroup();  
+  //ImGui::BeginGroup();
+  ImGui::BeginChild("##ESPMasterChild");
 
   //Player
   ImGui::BeginGroup();
@@ -74,11 +76,15 @@ void draw_esp_tab() {
   ImGui::ColorEdit4("Friend Color##Player", config.esp.player.friend_color.to_arr(), ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs);
   ImGui::Checkbox("Box##Player", &config.esp.player.box);
   ImGui::Checkbox("Health Bar##Player", &config.esp.player.health_bar);
+  ImGui::SetNextItemWidth(60.0f);
+  ImGui::Combo("Position##Player", &config.esp.player.hb_pos, config.esp.player.hb_pos_items, IM_ARRAYSIZE(config.esp.player.hb_pos_items));
   ImGui::Checkbox("Name##Player", &config.esp.player.name);
   ImGui::NewLine();
   ImGui::Text("Flags");
   ImGui::Checkbox("Target##Player", &config.esp.player.flags.target_indicator);
   ImGui::Checkbox("Friend##Player", &config.esp.player.flags.friend_indicator);
+  ImGui::SetNextItemWidth(60.0f);
+  ImGui::Combo("Position##Player##Flags", &config.esp.player.flags.pos, config.esp.player.flags.pos_items, IM_ARRAYSIZE(config.esp.player.flags.pos_items));
   ImGui::NewLine();
   ImGui::Text("Misc");
   ImGui::Checkbox("Friends##Player", &config.esp.player.friends);
@@ -111,7 +117,8 @@ void draw_esp_tab() {
   ImGui::Checkbox("Team##Buildings", &config.esp.buildings.team);
   ImGui::EndGroup();
   
-  ImGui::EndGroup();
+  //ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
 void draw_visuals_tab() {
@@ -126,7 +133,8 @@ void draw_visuals_tab() {
   ImGui::SameLine();
 
   /* Visuals */
-  ImGui::BeginGroup();
+  //ImGui::BeginGroup();
+  ImGui::BeginChild("##VisualsMasterChild");
 
   /* Removals */ //maybe make me a drop down
   ImGui::BeginGroup();
@@ -163,7 +171,8 @@ void draw_visuals_tab() {
   ImGui::SliderFloat(" ", &config.visuals.custom_fov, 30.1f, 150.0f, "%.0f\xC2\xB0");
   ImGui::EndGroup();
   
-  ImGui::EndGroup();
+  //ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
 void draw_misc_tab() {
@@ -177,14 +186,16 @@ void draw_misc_tab() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 
-  ImGui::BeginGroup();
+  //ImGui::BeginGroup();
+  ImGui::BeginChild("##MiscMasterChild");
   
   ImGui::Text("General");
   ImGui::Checkbox("Bhop", &config.misc.bhop);
   ImGui::Checkbox("Bypass sv_pure", &config.misc.bypasspure);
   ImGui::Checkbox("No Push", &config.misc.no_push);  
 
-  ImGui::EndGroup();
+  //ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
 void draw_debug_tab() {
@@ -198,13 +209,15 @@ void draw_debug_tab() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
   
-  ImGui::BeginGroup();
+  //ImGui::BeginGroup();
+  ImGui::BeginChild("##DebugMasterChild");
 
   ImGui::SliderInt("Font Height", &config.debug.font_height, 6, 60);  
   ImGui::SliderInt("Font Weight", &config.debug.font_weight, 50, 800);  
   ImGui::Checkbox("Draw All Entities", &config.debug.debug_render_all_entities);
   
-  ImGui::EndGroup();
+  //ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
 void draw_tab(ImGuiStyle* style, const char* name, int* tab, int index) {
