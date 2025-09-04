@@ -8,77 +8,77 @@
 
 #include "../../random_seed.hpp"
 
-int get_pred_tickbase(user_cmd* user_cmd, Player* localplayer) {
-  static int tick = 0;
-  static struct user_cmd* last_cmd = nullptr;
+int get_pred_tickbase(user_cmd *user_cmd, Player *localplayer) {
+    static int tick = 0;
+    static struct user_cmd *last_cmd = nullptr;
 
-  if (user_cmd) {
-      if (!last_cmd || last_cmd->has_been_predicted)
-	tick = localplayer->get_tickbase();
+    if (user_cmd) {
+        if (!last_cmd || last_cmd->has_been_predicted)
+            tick = localplayer->get_tickbase();
 
-      else tick++;
+        else tick++;
 
-      last_cmd = user_cmd;
+        last_cmd = user_cmd;
     }
 
-  return tick;
+    return tick;
 }
 
 MoveData move_data = {};
 float old_curtime;
 float old_frametime;
 int old_tickcount;
-void start_engine_prediction(user_cmd* user_cmd) {
-  Player* localplayer = entity_list->get_localplayer();
 
-  old_curtime = global_vars->curtime;
-  old_frametime = global_vars->frametime;
-  old_tickcount = global_vars->tickcount;
+void start_engine_prediction(user_cmd *user_cmd) {
+    Player *localplayer = entity_list->get_localplayer();
 
-  const int old_tickbase = localplayer->get_tickbase();
-  const bool old_first_time_predicted = prediction->first_time_predicted;
-  const bool old_in_prediction = prediction->in_prediction;
+    old_curtime = global_vars->curtime;
+    old_frametime = global_vars->frametime;
+    old_tickcount = global_vars->tickcount;
 
-  //move_helper->set_host(localplayer);
-    
-  //localplayer->set_current_cmd(user_cmd);
+    const int old_tickbase = localplayer->get_tickbase();
+    const bool old_first_time_predicted = prediction->first_time_predicted;
+    const bool old_in_prediction = prediction->in_prediction;
 
-  //*random_seed = MD5_PseudoRandom(user_cmd->command_number) & INT_MAX;
+    //move_helper->set_host(localplayer);
 
-  global_vars->curtime = get_pred_tickbase(user_cmd, localplayer) * TICK_INTERVAL;
-  global_vars->frametime = (prediction->engine_paused ? 0.0f : TICK_INTERVAL);
-  global_vars->tickcount = get_pred_tickbase(user_cmd, localplayer);
+    //localplayer->set_current_cmd(user_cmd);
 
-  prediction->first_time_predicted = false;
-  prediction->in_prediction = true;
+    //*random_seed = MD5_PseudoRandom(user_cmd->command_number) & INT_MAX;
 
-  //prediction->set_local_view_angles(user_cmd->view_angles);
-    
-  /*
-    prediction->setup_move(localplayer, user_cmd, move_helper, &move_data);
-    game_movement->process_movement(localplayer, &move_data);
-    prediction->finish_move(localplayer, user_cmd, &move_data);
-  */
+    global_vars->curtime = get_pred_tickbase(user_cmd, localplayer) * TICK_INTERVAL;
+    global_vars->frametime = (prediction->engine_paused ? 0.0f : TICK_INTERVAL);
+    global_vars->tickcount = get_pred_tickbase(user_cmd, localplayer);
 
-  /*    
-	prediction->run_command(localplayer, user_cmd, move_helper);
-  */
-    
-  //move_helper->set_host(nullptr);
+    prediction->first_time_predicted = false;
+    prediction->in_prediction = true;
 
-  //localplayer->set_tickbase(old_tickbase);
+    //prediction->set_local_view_angles(user_cmd->view_angles);
 
-  prediction->in_prediction = old_in_prediction;
-  prediction->first_time_predicted = old_first_time_predicted;
+    /*
+      prediction->setup_move(localplayer, user_cmd, move_helper, &move_data);
+      game_movement->process_movement(localplayer, &move_data);
+      prediction->finish_move(localplayer, user_cmd, &move_data);
+    */
 
+    /*
+      prediction->run_command(localplayer, user_cmd, move_helper);
+    */
+
+    //move_helper->set_host(nullptr);
+
+    //localplayer->set_tickbase(old_tickbase);
+
+    prediction->in_prediction = old_in_prediction;
+    prediction->first_time_predicted = old_first_time_predicted;
 }
 
 void end_engine_prediction() {
-  //localplayer->set_current_cmd(nullptr);
+    //localplayer->set_current_cmd(nullptr);
 
-  global_vars->curtime = old_curtime;
-  global_vars->frametime = old_frametime;
-  global_vars->tickcount = old_tickcount;
+    global_vars->curtime = old_curtime;
+    global_vars->frametime = old_frametime;
+    global_vars->tickcount = old_tickcount;
 
-  //*random_seed = -1;
+    //*random_seed = -1;
 }

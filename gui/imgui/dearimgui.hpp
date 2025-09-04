@@ -46,14 +46,14 @@ namespace ImGui {
     }
   }
 
-  static void KeybindBox(bool* waitingFlag, int* keycode) {
+  static void KeybindBox(bool* waitingFlag, const int* keycode) {
     std::string buttonLabel;
     if (*waitingFlag)
       buttonLabel = "...";
     else if (*keycode == SDLK_UNKNOWN)
       buttonLabel = " ";
     else
-      buttonLabel = GetKeyName((SDL_Scancode)*keycode);
+      buttonLabel = GetKeyName(static_cast<SDL_Scancode>(*keycode));
 
     if (ImGui::Button(buttonLabel.c_str(), ImVec2(90, 20))) {
       *waitingFlag = true;
