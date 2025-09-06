@@ -3,14 +3,13 @@
 
 class Convar {
 public:
-  void set_int(int value) {
-    *(int*)(this + 0x58) = value;
-  }
+    void set_int(int value) {
+        *reinterpret_cast<int *>(this + 0x58) = value;
+    }
 
-  int get_int() {
-    return *(int*)(this + 0x58);
-  }
-
+    int get_int() {
+        return *reinterpret_cast<int *>(this + 0x58);
+    }
 };
 
 #endif

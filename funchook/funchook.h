@@ -104,7 +104,7 @@ FUNCHOOK_EXPORT funchook_t *funchook_create(void);
 FUNCHOOK_EXPORT int funchook_prepare(funchook_t *funchook, void **target_func, void *hook_func);
 
 FUNCHOOK_EXPORT int funchook_prepare_with_params(funchook_t *funchook,
-    void **target_func, const funchook_params_t *params);
+                                                 void **target_func, const funchook_params_t *params);
 
 /**
  * Install hooks prepared by funchook_prepare().

@@ -3,6 +3,6 @@
 
 #include <cstdint>
 
-static uint32_t* random_seed; 
+static uint32_t *random_seed;
 
 #endif

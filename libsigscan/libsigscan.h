@@ -88,7 +88,7 @@ static inline void* sigscan_pid(int pid, const char* ida_pattern) {
  * Search for `ida_pattern' in all the modules loaded by the current process,
  * whose name matches `regex'.
  */
-static inline void* sigscan_module(const char* regex, const char* ida_pattern) {
+static inline void* sigscan_module(const char *regex, const char *ida_pattern) {
     return sigscan_pid_module(SIGSCAN_PID_SELF, regex, ida_pattern);
 }
 

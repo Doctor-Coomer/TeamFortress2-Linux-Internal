@@ -1,12 +1,11 @@
 #ifndef SNIPER_DOT_HPP
 #define SNIPER_DOT_HPP
 
-class SniperDot {  
+class SniperDot {
 public:
-  float get_charge_start_time(void) {
-    return *(float*)(this + 0x7E0);
-  }
+    float get_charge_start_time(void) {
+        return *reinterpret_cast<float *>(this + 0x7E0);
+    }
 };
 
 #endif
-

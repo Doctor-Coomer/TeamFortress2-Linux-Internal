@@ -8,44 +8,43 @@ struct player_info;
 
 class Engine {
 public:
-  int get_localplayer_index(void) {
-    void** vtable = *(void ***)this;
-    int (*get_localplayer_index_fn)(void*) = (int (*)(void*))vtable[12];
-    
-    return get_localplayer_index_fn(this);
-  }
-  
-  Vec2 get_screen_size(void) {
-    void** vtable = *(void ***)this;
+    int get_localplayer_index(void) {
+        void **vtable = *reinterpret_cast<void ***>(this);
+        int (*get_localplayer_index_fn)(void *) = (int (*)(void *)) vtable[12];
 
-    void (*get_screen_size_fn)(void*, int*, int*) = (void (*)(void*, int*, int*))vtable[5];
-    
-    int width;
-    int height;
-    
-    get_screen_size_fn(this, &width, &height);
+        return get_localplayer_index_fn(this);
+    }
 
-    return Vec2{width, height};
-  }
+    Vec2 get_screen_size(void) {
+        void **vtable = *reinterpret_cast<void ***>(this);
 
-  bool is_in_game(void) {
-    void** vtable = *(void ***)this;
-    bool (*is_in_game_fn)(void*) = (bool (*)(void*))vtable[26];
+        void (*get_screen_size_fn)(void *, int *, int *) = (void (*)(void *, int *, int *)) vtable[5];
 
-    return is_in_game_fn(this);
-  }
+        int width;
+        int height;
+
+        get_screen_size_fn(this, &width, &height);
+
+        return Vec2{width, height};
+    }
+
+    bool is_in_game(void) {
+        void **vtable = *reinterpret_cast<void ***>(this);
+        bool (*is_in_game_fn)(void *) = (bool (*)(void *)) vtable[26];
+
+        return is_in_game_fn(this);
+    }
 
 
-  bool get_player_info(int entity_index, player_info* pinfo) {
-    void** vtable = *(void ***)this;
-    bool (*get_player_info_fn)(void*, int, player_info*) = (bool (*)(void*, int, player_info*))vtable[8];
+    bool get_player_info(int entity_index, player_info *pinfo) {
+        void **vtable = *reinterpret_cast<void ***>(this);
+        bool (*get_player_info_fn)(void *, int, player_info *) = (bool (*)(void *, int, player_info *)) vtable[8];
 
-    return get_player_info_fn(this, entity_index, pinfo);
-  }
-
+        return get_player_info_fn(this, entity_index, pinfo);
+    }
 };
 
-static inline Engine* engine;
+static inline Engine *engine;
 
 
 #endif

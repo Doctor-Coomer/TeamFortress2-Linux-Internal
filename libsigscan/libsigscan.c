@@ -234,7 +234,7 @@ static void* do_scan(int pid, uintptr_t start, uintptr_t end, const char* ida) {
     size_t buf_pos     = 0;
     size_t match_start = 0;
 
-    while ((chunk_start + buf_pos) < end && mask[pat_pos] != '\0') {
+    while (chunk_start + buf_pos < end && mask[pat_pos] != '\0') {
         if (buf_pos >= buf_sz) {
             if (match_start == buf_pos) {
                 chunk_start += buf_sz;
@@ -269,7 +269,7 @@ static void* do_scan(int pid, uintptr_t start, uintptr_t end, const char* ida) {
      * Otherwise, NULL.
      */
     void* ret =
-      (mask[pat_pos] == '\0') ? (void*)(chunk_start + match_start) : NULL;
+      mask[pat_pos] == '\0' ? (void*)(chunk_start + match_start) : NULL;
 
     free(buf);
     free(mask);
@@ -380,7 +380,7 @@ SigscanModuleBounds* sigscan_get_module_bounds(int pid, const char* regex) {
         void* end_addr   = (void*)end_num;
 
         /* Parse "rwxp". For now we only care about read permissions. */
-        const bool is_readable = (rwxp[0] == 'r');
+        const bool is_readable = rwxp[0] == 'r';
 
         /*
          * First, we make sure we got a name, and that it doesn't start with
