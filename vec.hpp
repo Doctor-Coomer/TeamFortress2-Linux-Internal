@@ -1,26 +1,28 @@
 #ifndef VEC_HPP
 #define VEC_HPP
+#include <limits>
+#include <cmath>
 
 struct Vec2 {
     int x = 0, y = 0;
 };
 
 struct Vec3 {
-    float x = 0.0, y = 0.0, z = 0.0;
+    float x = 0.0f, y = 0.0f, z = 0.0f;
 
-    Vec3 operator+(const Vec3 v) {
+    Vec3 operator+(const Vec3 v) const {
         return Vec3{x + v.x, y + v.y, z + v.z};
     }
 
-    Vec3 operator*(const Vec3 v) {
+    Vec3 operator*(const Vec3 v) const {
         return Vec3{x * v.x, y * v.y, z * v.z};
     }
 
-    Vec3 operator*(float v) {
+    Vec3 operator*(const float v) const {
         return Vec3{x * v, y * v, z * v};
     }
 
-    Vec3 operator*(int v) {
+    Vec3 operator*(const int v) const {
         return Vec3{x * v, y * v, z * v};
     }
 
@@ -38,20 +40,39 @@ struct Vec3 {
         return *this;
     }
 
-    Vec3 &operator+=(float v) {
+    Vec3 &operator+=(const float v) {
         x += v;
         y += v;
         z += v;
         return *this;
     }
 
-    Vec3 operator-(const Vec3 v) {
+    Vec3 operator-(const Vec3 v) const {
         return Vec3{x - v.x, y - v.y, z - v.z};
+
+    }
+
+    float length2d(void) const
+    {
+        return sqrtf(x * x + y * y);
+    }
+
+    float normalize2d()
+    {
+        const float length = length2d();
+
+        const float length_normal = 1.f / (std::numeric_limits<float>::epsilon() + length);
+
+        x *= length_normal;
+        y *= length_normal;
+        z = 0.f;
+
+        return length;
     }
 };
 
 struct __attribute__((aligned(16))) Vec3_aligned {
-    float x = 0.0, y = 0.0, z = 0.0;
+    float x = 0.0f, y = 0.0f, z = 0.0f;
 };
 
 struct RGBA {
@@ -59,9 +80,9 @@ struct RGBA {
 };
 
 struct RGBA_float {
-    float r = 1.0, g = 1.0, b = 1.0, a = 1.0;
+    float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
 
-    RGBA to_RGBA() {
+    [[nodiscard]] RGBA to_RGBA() const {
         return RGBA{
             .r = static_cast<int>(r * 255), .g = static_cast<int>(g * 255), .b = static_cast<int>(b * 255),
             .a = static_cast<int>(a * 255)

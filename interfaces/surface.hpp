@@ -1,10 +1,10 @@
 #ifndef SURFACE_HPP
 #define SURFACE_HPP
 
-#include <wchar.h>
+#include <cwchar>
 
 #include "../vec.hpp"
-
+#include "../libsigscan/libsigscan.h"
 #include "../gui/config.hpp"
 
 class Surface {
@@ -138,6 +138,30 @@ public:
         void (*draw_circle_fn)(void *, int, int, int, int) = (void (*)(void *, int, int, int, int)) vtable[99];
 
         draw_circle_fn(this, x, y, radius, segments);
+    }
+
+    void disable_clipping(bool disable) {
+        void **vtable = *reinterpret_cast<void ***>(this);
+
+        void (*disable_clipping_fn)(void *, bool) = (void (*)(void *, bool)) vtable[156];
+
+        disable_clipping_fn(this, disable);
+    }
+
+    void set_clipping_rect(int left, int top, int right, int bottom) {
+        void **vtable = *reinterpret_cast<void ***>(this);
+
+        void (*set_clipping_rect_fn)(void *, int, int, int, int) = (void (*)(void *, int, int, int, int)) vtable[158];
+
+        set_clipping_rect_fn(this, left, top, right, bottom);
+    }
+
+    void start_drawing(void) {
+        reinterpret_cast<void*>(sigscan_module("./bin/linux64/vguimatsurface.so", "55 48 89 E5 41 54 53 48 89 FB 48 83 EC ? 80 3D"));
+    }
+
+    void finish_drawing(void) {
+        reinterpret_cast<void*>(sigscan_module("./bin/linux64/vguimatsurface.so", "55 31 FF 48 89 E5 41 54"));
     }
 };
 

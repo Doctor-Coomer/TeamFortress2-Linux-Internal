@@ -45,6 +45,7 @@
 #include "hooks/should_draw_local_player.cpp"
 #include "hooks/should_draw_this_player.cpp"
 #include "hooks/draw_view_models.cpp"
+#include "hooks/enginevgui_paint.cpp"
 
 #include "vec.hpp"
 
@@ -64,23 +65,23 @@ void entry() {
     vgui = get_interface("./bin/linux64/vgui2.so", "VGUI_Panel009");
     surface = static_cast<Surface *>(get_interface("./bin/linux64/vguimatsurface.so", "VGUI_Surface030"));
 
-    unsigned long func_address = reinterpret_cast<unsigned long>(sigscan_module("client.so",
+    const unsigned long func_address = reinterpret_cast<unsigned long>(sigscan_module("client.so",
         "48 8D 05 ? ? ? ? 48 8B 38 48 8B 07 FF 90 ? ? ? ? 48 8D 15 ? ? ? ? 84 C0"));
-    unsigned int input_eaddr = *reinterpret_cast<unsigned int *>(func_address + 0x3);
-    unsigned long next_instruction = func_address + 0x7;
+    const unsigned int input_eaddr = *reinterpret_cast<unsigned int *>(func_address + 0x3);
+    const unsigned long next_instruction = func_address + 0x7;
     input = static_cast<Input *>(*reinterpret_cast<void **>(next_instruction + input_eaddr));
 
-    unsigned long check_stuck_address = reinterpret_cast<unsigned long>(sigscan_module(
+    const unsigned long check_stuck_address = reinterpret_cast<unsigned long>(sigscan_module(
         "client.so", "48 8D 05 ? ? ? ? 48 89 85 ? ? ? ? 74 ? 48 8B 38"));
-    unsigned int move_helper_eaddr = *reinterpret_cast<unsigned int *>(check_stuck_address + 0x3);
-    unsigned long check_stuck_next_instruction = check_stuck_address + 0x7;
+    const unsigned int move_helper_eaddr = *reinterpret_cast<unsigned int *>(check_stuck_address + 0x3);
+    const unsigned long check_stuck_next_instruction = check_stuck_address + 0x7;
     move_helper = static_cast<MoveHelper *>(*reinterpret_cast<void **>(
         check_stuck_next_instruction + move_helper_eaddr));
 
-    unsigned long rcon_addr_change_address = reinterpret_cast<unsigned long>(sigscan_module(
+    const unsigned long rcon_addr_change_address = reinterpret_cast<unsigned long>(sigscan_module(
         "engine.so", "48 8D 05 ? ? ? ? 4C 8B 40"));
-    unsigned int client_state_eaddr = *reinterpret_cast<unsigned int *>(rcon_addr_change_address + 0x3);
-    unsigned long rcon_addr_change_next_instruction = rcon_addr_change_address + 0x7;
+    const unsigned int client_state_eaddr = *reinterpret_cast<unsigned int *>(rcon_addr_change_address + 0x3);
+    const unsigned long rcon_addr_change_next_instruction = rcon_addr_change_address + 0x7;
     client_state = static_cast<ClientState *>(reinterpret_cast<void *>(
         rcon_addr_change_next_instruction + client_state_eaddr));
 
@@ -107,23 +108,23 @@ void entry() {
 
     steam_client = static_cast<SteamClient *>(get_interface("../../../linux64/steamclient.so", "SteamClient020"));
 
-    int steam_pipe = steam_client->create_steam_pipe();
-    int steam_user = steam_client->connect_to_global_user(steam_pipe);
+    const int steam_pipe = steam_client->create_steam_pipe();
+    const int steam_user = steam_client->connect_to_global_user(steam_pipe);
     steam_friends = static_cast<SteamFriends *>(steam_client->get_steam_friends_interface(
         steam_user, steam_pipe, "SteamFriends017"));
 
     client_vtable = *reinterpret_cast<void ***>(client);
     void *hud_process_input_addr = client_vtable[10];
-    __uint32_t client_mode_eaddr = *reinterpret_cast<__uint32_t *>(
+    const __uint32_t client_mode_eaddr = *reinterpret_cast<__uint32_t *>(
         reinterpret_cast<__uint64_t>(hud_process_input_addr) + 0x3);
     void *client_mode_next_instruction = reinterpret_cast<void *>(
         reinterpret_cast<__uint64_t>(hud_process_input_addr) + 0x7);
     void *client_mode_interface = *reinterpret_cast<void **>(
         reinterpret_cast<__uint64_t>(client_mode_next_instruction) + client_mode_eaddr);
 
-    unsigned long hud_update = reinterpret_cast<unsigned long>(client_vtable[11]);
-    unsigned int global_vars_eaddr = *reinterpret_cast<unsigned int *>(hud_update + 0x16);
-    unsigned long global_vars_next_instruction = hud_update + 0x1A;
+    const unsigned long hud_update = reinterpret_cast<unsigned long>(client_vtable[11]);
+    const unsigned int global_vars_eaddr = *reinterpret_cast<unsigned int *>(hud_update + 0x16);
+    const unsigned long global_vars_next_instruction = hud_update + 0x1A;
     global_vars = static_cast<GlobalVars *>(*reinterpret_cast<void **>(
         global_vars_next_instruction + global_vars_eaddr));
 
@@ -166,7 +167,7 @@ void entry() {
         print("PaintTraverse hooked\n");
     }
 
-    model_render_vtable = *(void ***) model_render;
+    model_render_vtable = *reinterpret_cast<void ***>(model_render);
 
     draw_model_execute_original = (void (*)(void *, void *, ModelRenderInfo_t *, VMatrix *)) model_render_vtable[19];
     if (!write_to_table(model_render_vtable, 19, (void *) draw_model_execute_hook)) {
@@ -182,6 +183,9 @@ void entry() {
 
     load_white_list_original = (void* (*)(void *, const char *)) sigscan_module(
         "engine.so", "55 48 89 E5 41 55 41 54 49 89 FC 48 83 EC ? 48 8B 07 FF 50");
+
+    enginevgui_paint_original = (void (*)(void *, int)) sigscan_module(
+        "engine.so", "55 31 C0 48 89 E5 41 57 41 89 F7 41 56 41 55 41 54 53 48 89 FB 48 83 EC");
 
     cl_move_original = (void (*)(float, bool)) sigscan_module("engine.so",
                                                               "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 83 EC ? 83 3D ? ? ? ? ? F3 0F 11 85");
@@ -204,6 +208,11 @@ void entry() {
 
     rv = funchook_prepare(funchook, reinterpret_cast<void **>(&load_white_list_original),
                           (void *) load_white_list_hook);
+    if (rv != 0) {
+    }
+
+    rv = funchook_prepare(funchook, reinterpret_cast<void **>(&enginevgui_paint_original),
+                          (void *) enginevgui_paint_hook);
     if (rv != 0) {
     }
 
@@ -287,10 +296,10 @@ void entry() {
 
 
     // Misc static variables and hookable things
-    unsigned long func_address_2 = reinterpret_cast<unsigned long>(sigscan_module(
+    const unsigned long func_address_2 = reinterpret_cast<unsigned long>(sigscan_module(
         "client.so", "48 8D 05 ? ? ? ? BA ? ? ? ? 89 10")); // credz: vannie / @clsendmove on github
-    unsigned int random_seed_eaddr = *reinterpret_cast<unsigned int *>(func_address_2 + 0x3);
-    unsigned long func_address_2_next_instruction = func_address_2 + 0x7;
+    const unsigned int random_seed_eaddr = *reinterpret_cast<unsigned int *>(func_address_2 + 0x3);
+    const unsigned long func_address_2_next_instruction = func_address_2 + 0x7;
     random_seed = static_cast<uint32_t *>(reinterpret_cast<void *>(
         func_address_2_next_instruction + random_seed_eaddr));
 }

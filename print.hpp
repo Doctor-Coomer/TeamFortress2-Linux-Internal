@@ -1,11 +1,11 @@
 #ifndef PRINT_HPP
 #define PRINT_HPP
 
-#include <stdio.h>
-#include <stdarg.h>
+#include <cstdio>
+#include <cstdarg>
 #include <unistd.h>
 
-static FILE *log_file = NULL;
+static FILE *log_file = nullptr;
 
 static void print(const char *fmt, ...) {
     if (!log_file) {

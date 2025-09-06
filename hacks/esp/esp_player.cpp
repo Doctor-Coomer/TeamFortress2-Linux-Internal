@@ -42,8 +42,7 @@ void health_bar_esp_player(Vec3 screen, Vec3 screen_offset, Player *player) {
                            screen_offset.y - 2);
 
         surface->set_rgba(0, 255, 0, 255);
-        int ydelta = (screen_offset.y - screen.y) * (
-                         1.f - static_cast<float>(player->get_health()) / player->get_max_health());
+        int ydelta = (screen_offset.y - screen.y) * (1.f - (float(player->get_health()) / player->get_max_health()));
 
         if (player->get_health() > player->get_max_health()) {
             // over healed
@@ -73,9 +72,10 @@ void name_esp_player(Vec3 screen, Vec3 screen_offset, Player *player, unsigned i
 
 
         wchar_t name[32];
-        if (const size_t len = mbstowcs(name, pinfo.name, 32); len == -1u) return;
+        size_t len = mbstowcs(name, pinfo.name, 32);
+        if (len == (size_t) -1) return;
 
-        const unsigned int name_length = surface->get_string_width(esp_player_font, name);
+        unsigned int name_length = surface->get_string_width(esp_player_font, name);
 
         surface->draw_set_text_color(255, 255, 255, 255);
         surface->draw_set_text_pos(screen.x - (name_length / 2.f),
@@ -85,7 +85,7 @@ void name_esp_player(Vec3 screen, Vec3 screen_offset, Player *player, unsigned i
     }
 }
 
-void flags_esp_player(const Vec3 screen, const Vec3 screen_offset, Player *player, unsigned int i) {
+void flags_esp_player(Vec3 screen, Vec3 screen_offset, Player *player, unsigned int i) {
     float flags_x_offset = (screen.y - screen_offset.y) / 4;
     float flags_y_offset = 0;
 
@@ -142,7 +142,7 @@ void esp_player(unsigned int i, Player *player) {
 
     Player *localplayer = entity_list->get_localplayer();
     if (player == localplayer || // Ignore Local Player
-        player->is_dormant() || // Ignore Dormant (TODO: Add fading effect to dormant players)
+        player->is_dormant() || // Ignore Dormat (TODO: Add fading effect to dormat players)
         player->get_lifestate() != 1 || // Ignore Dead
         (player->get_team() == localplayer->get_team() && !config.esp.player.team && !player->is_friend()) ||
         // Ignore Team

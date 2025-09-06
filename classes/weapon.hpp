@@ -5,7 +5,7 @@
 
 #include "../interfaces/global_vars.hpp"
 
-#define TICK_INTERVAL 0.015
+#define TICK_INTERVAL global_vars->interval_per_tick
 
 //https://github.com/Fedoraware/Fedoraware/blob/888d9338dbf08f6c55816c86d5887dd58cc28d98/Fedoraware/Fedoraware-TF2/src/SDK/Includes/Enums.h#L1081
 enum {
@@ -783,14 +783,14 @@ public:
     }
 
     bool is_headshot_weapon(void) {
-        int weapon_type_id = this->get_type_id();
+        const int weapon_type_id = this->get_type_id();
         if (weapon_type_id == TF_WEAPON_SNIPERRIFLE ||
             weapon_type_id == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
             weapon_type_id == TF_WEAPON_SNIPERRIFLE_DECAP) {
             return true;
         }
 
-        int weapon_def_id = this->get_def_id();
+        const int weapon_def_id = this->get_def_id();
         if (weapon_def_id == Spy_m_TheAmbassador ||
             weapon_def_id == Spy_m_FestiveAmbassador ||
             weapon_def_id == Sniper_m_SniperRifle ||
@@ -818,10 +818,10 @@ public:
 
     bool can_ambassador_headshot() {
         Entity *owner = this->get_owner_entity();
-        if (owner == nullptr)
+        if (!owner)
             return false;
 
-        return (owner->get_tickbase() * TICK_INTERVAL) - this->get_last_attack() > 1.f;
+        return owner->get_tickbase() * TICK_INTERVAL - this->get_last_attack() > 1.f;
     }
 
     float get_charged_damage(void) {
@@ -842,26 +842,26 @@ public:
 
     bool can_primary_attack() {
         Entity *owner = this->get_owner_entity();
-        if (owner == nullptr)
+        if (!owner)
             return false;
 
-        float next_attack = *reinterpret_cast<float *>(owner + 0x1088);
-        float next_primary_attack = this->get_next_primary_attack();
-        float time = owner->get_tickbase() * global_vars->interval_per_tick;
+        const float next_attack = *reinterpret_cast<float *>(owner + 0x1088);
+        const float next_primary_attack = this->get_next_primary_attack();
+        const float time = owner->get_tickbase() * TICK_INTERVAL;
 
-        return (next_primary_attack <= time && next_attack <= time);
+        return next_primary_attack <= time && next_attack <= time;
     }
 
     bool can_secondary_attack() {
         Entity *owner = this->get_owner_entity();
-        if (owner == nullptr)
+        if (!owner)
             return false;
 
-        float next_attack = *reinterpret_cast<float *>(owner + 0x1088);
-        float next_secondary_attack = this->get_next_secondary_attack();
-        float time = owner->get_tickbase() * global_vars->interval_per_tick;
+        const float next_attack = *reinterpret_cast<float *>(owner + 0x1088);
+        const float next_secondary_attack = this->get_next_secondary_attack();
+        const float time = owner->get_tickbase() * TICK_INTERVAL;
 
-        return (next_secondary_attack <= time && next_attack <= time);
+        return next_secondary_attack <= time && next_attack <= time;
     }
 };
 

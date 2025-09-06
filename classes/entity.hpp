@@ -30,37 +30,37 @@ enum pickup_type {
 };
 
 enum entity_flags {
-    FL_ONGROUND = (1 << 0),
-    FL_DUCKING = (1 << 1),
-    FL_WATERJUMP = (1 << 2),
-    FL_ONTRAIN = (1 << 3),
-    FL_INRAIN = (1 << 4),
-    FL_FROZEN = (1 << 5),
-    FL_ATCONTROLS = (1 << 6),
-    FL_CLIENT = (1 << 7),
-    FL_FAKECLIENT = (1 << 8),
-    FL_INWATER = (1 << 9),
-    FL_FLY = (1 << 10),
-    FL_SWIM = (1 << 11),
-    FL_CONVEYOR = (1 << 12),
-    FL_NPC = (1 << 13),
-    FL_GODMODE = (1 << 14),
-    FL_NOTARGET = (1 << 15),
-    FL_AIMTARGET = (1 << 16),
-    FL_PARTIALGROUND = (1 << 17),
-    FL_STATICPROP = (1 << 18),
-    FL_GRAPHED = (1 << 19),
-    FL_GRENADE = (1 << 20),
-    FL_STEPMOVEMENT = (1 << 21),
-    FL_DONTTOUCH = (1 << 22),
-    FL_BASEVELOCITY = (1 << 23),
-    FL_WORLDBRUSH = (1 << 24),
-    FL_OBJECT = (1 << 25),
-    FL_KILLME = (1 << 26),
-    FL_ONFIRE = (1 << 27),
-    FL_DISSOLVING = (1 << 28),
-    FL_TRANSRAGDOLL = (1 << 29),
-    FL_UNBLOCKABLE_BY_PLAYER = (1 << 30)
+    FL_ONGROUND = 1 << 0,
+    FL_DUCKING = 1 << 1,
+    FL_WATERJUMP = 1 << 2,
+    FL_ONTRAIN = 1 << 3,
+    FL_INRAIN = 1 << 4,
+    FL_FROZEN = 1 << 5,
+    FL_ATCONTROLS = 1 << 6,
+    FL_CLIENT = 1 << 7,
+    FL_FAKECLIENT = 1 << 8,
+    FL_INWATER = 1 << 9,
+    FL_FLY = 1 << 10,
+    FL_SWIM = 1 << 11,
+    FL_CONVEYOR = 1 << 12,
+    FL_NPC = 1 << 13,
+    FL_GODMODE = 1 << 14,
+    FL_NOTARGET = 1 << 15,
+    FL_AIMTARGET = 1 << 16,
+    FL_PARTIALGROUND = 1 << 17,
+    FL_STATICPROP = 1 << 18,
+    FL_GRAPHED = 1 << 19,
+    FL_GRENADE = 1 << 20,
+    FL_STEPMOVEMENT = 1 << 21,
+    FL_DONTTOUCH = 1 << 22,
+    FL_BASEVELOCITY = 1 << 23,
+    FL_WORLDBRUSH = 1 << 24,
+    FL_OBJECT = 1 << 25,
+    FL_KILLME = 1 << 26,
+    FL_ONFIRE = 1 << 27,
+    FL_DISSOLVING = 1 << 28,
+    FL_TRANSRAGDOLL = 1 << 29,
+    FL_UNBLOCKABLE_BY_PLAYER = 1 << 30
 };
 
 class Entity {
@@ -84,11 +84,11 @@ public:
 
     // TODO: Substitute "void*" with real class type
     void *get_networkable(void) {
-        return (void *) (this + 0x10);
+        return this + 0x10;
     }
 
     void *get_renderable(void) {
-        return (void *) (this + 0x8);
+        return this + 0x8;
     }
 
     int get_team(void) {
@@ -111,21 +111,21 @@ public:
         return (const char *) *(unsigned long *) (base_class + 0x8);
     }
 
-    enum pickup_type get_pickup_type(void) {
+    pickup_type get_pickup_type(void) {
         const char *model_name = get_model_name();
 
         if (strstr(model_name, "models/items/ammopack")) {
-            return pickup_type::AMMOPACK;
+            return AMMOPACK;
         }
 
         if (strstr(model_name, "models/items/medkit") ||
             strstr(model_name, "models/props_medieval/medieval_meat.mdl") ||
             strstr(model_name, "models/props_halloween/halloween_medkit")
         ) {
-            return pickup_type::MEDKIT;
+            return MEDKIT;
         }
 
-        return pickup_type::UNKNOWN;
+        return UNKNOWN;
     }
 
     bool is_dormant(void) {
@@ -166,14 +166,12 @@ public:
 
     bool is_building(void) {
         switch (this->get_class_id()) {
-            case class_id::SENTRY:
-            case class_id::DISPENSER:
-            case class_id::TELEPORTER:
+            case SENTRY:
+            case DISPENSER:
+            case TELEPORTER:
                 return true;
             default: return false;
         }
-
-        return false;
     }
 };
 

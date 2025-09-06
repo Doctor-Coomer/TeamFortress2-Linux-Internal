@@ -258,7 +258,7 @@ public:
         return *reinterpret_cast<int *>(this + 0x1BA0);
     }
 
-    Vec3 get_bone_pos(int bone_num) {
+    Vec3 get_bone_pos(const int bone_num) {
         // 128 bones, 3x4 matrix
         float bone_to_world_out[128][3][4];
         if (this->setup_bones(bone_to_world_out, 128, 0x100, this->get_simulation_time())) {
@@ -386,7 +386,7 @@ public:
 
             if (this->get_tf_class() == CLASS_SNIPER) {
                 if (this->is_scoped()) {
-                    if (const float charge_time = (this->get_tickbase() * TICK_INTERVAL) - this->get_fov_time();
+                    if (const float charge_time = this->get_tickbase() * TICK_INTERVAL - this->get_fov_time();
                         target_player->get_health() <= 50 || charge_time >= 0.2f) {
                         return true;
                     } else {

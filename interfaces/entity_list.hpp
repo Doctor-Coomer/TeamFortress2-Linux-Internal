@@ -21,7 +21,7 @@ public:
     }
 
     Entity *entity_from_handle(int handle) {
-        return entity_from_index((handle & ((1 << 16) - 1)));
+        return entity_from_index(handle & (1 << 16) - 1);
         // Convert handle to index https://github.com/ValveSoftware/source-sdk-2013/blob/39f6dde8fbc238727c020d13b05ecadd31bda4c0/src/public/const.h#L83
     }
 

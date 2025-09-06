@@ -7,9 +7,9 @@
 
 inline static bool menu_focused = false;
 
-void get_input(SDL_Event *event) {
-    ImGui::KeybindEvent(event, &config.aimbot.key.waiting, &config.aimbot.key.button);
-    ImGui::KeybindEvent(event, &config.visuals.thirdperson.key.waiting, &config.visuals.thirdperson.key.button);
+void get_input(const SDL_Event *event) {
+    ImGui::KeybindEvent(event, &config.aimbot.key.waiting, &config.aimbot.key.ibutton);
+    ImGui::KeybindEvent(event, &config.visuals.thirdperson.key.waiting, &config.visuals.thirdperson.key.ibutton);
 }
 
 void draw_aim_tab() {
@@ -31,7 +31,7 @@ void draw_aim_tab() {
 
     ImGui::Text("Aimbot Key: ");
     ImGui::SameLine();
-    ImGui::KeybindBox(&config.aimbot.key.waiting, &config.aimbot.key.button);
+    ImGui::KeybindBox(&config.aimbot.key.waiting, &config.aimbot.key.ibutton);
     ImGui::SameLine();
     ImGui::Checkbox("Use Key", &config.aimbot.use_key);
 
@@ -90,7 +90,7 @@ void draw_esp_tab() {
     ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
     ImGui::SameLine();
 
-    //Pickups (health and ammo etc)
+    //Pickups (health and ammo etc.)
     ImGui::BeginGroup();
     ImGui::Text("Pickup");
     ImGui::Checkbox("Box##Pickup", &config.esp.pickup.box);
@@ -129,7 +129,7 @@ void draw_visuals_tab() {
     /* Visuals */
     ImGui::BeginGroup();
 
-    /* Removals */ //maybe make me a drop down
+    /* Removals */ //maybe make me a drop-down
     ImGui::BeginGroup();
     ImGui::Text("Removals");
     ImGui::Checkbox("Scope", &config.visuals.removals.scope);
@@ -151,9 +151,9 @@ void draw_visuals_tab() {
     ImGui::Text("Camera");
     ImGui::Text("Key: ");
     ImGui::SameLine();
-    ImGui::KeybindBox(&config.visuals.thirdperson.key.waiting, &config.visuals.thirdperson.key.button);
+    ImGui::KeybindBox(&config.visuals.thirdperson.key.waiting, &config.visuals.thirdperson.key.ibutton);
     ImGui::SameLine();
-    ImGui::Checkbox("Thirdperson", &config.visuals.thirdperson.enabled);
+    ImGui::Checkbox("Third Person", &config.visuals.thirdperson.enabled);
     ImGui::SliderFloatHeightPad("Z##CameraZ", &config.visuals.thirdperson.z, 20.0f, 500.0f, 0, "%.1f");
     ImGui::SliderFloatHeightPad("Y##CameraY", &config.visuals.thirdperson.y, -50.0f, 50.0f, 0, "%.1f");
     ImGui::SliderFloatHeightPad("X##CameraX", &config.visuals.thirdperson.x, -50.0f, 50.0f, 0, "%.1f");
@@ -210,7 +210,7 @@ void draw_debug_tab() {
     ImGui::EndGroup();
 }
 
-void draw_tab(ImGuiStyle *style, const char *name, int *tab, int index) {
+void draw_tab(ImGuiStyle *style, const char *name, int *tab, const int index) {
     constexpr ImVec4 orig_box_color = ImVec4(0.15, 0.15, 0.15, 1);
 
     if (*tab == index) {

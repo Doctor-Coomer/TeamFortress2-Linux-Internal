@@ -46,7 +46,6 @@ public:
         to_firstperson_fn(this);
     }
 
-public:
     char pad0[0x100];
 
     user_cmd *commands;

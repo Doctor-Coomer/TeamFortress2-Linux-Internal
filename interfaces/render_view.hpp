@@ -18,7 +18,7 @@ public:
         get_matrices_for_view_fn(this, view, world_to_screen, view_to_projection, world_to_projection, world_to_pixels);
     }
 
-    bool world_to_screen(Vec3 *point, Vec3 *screen) {
+    bool world_to_screen(const Vec3 *point, Vec3 *screen) {
         view_setup local_view = {};
         client->get_player_view(local_view);
 
@@ -28,10 +28,11 @@ public:
         VMatrix world_to_pixels = {};
         get_matrices_for_view(local_view, &world_to_screen, &view_to_pojection, &world_to_projection, &world_to_pixels);
 
-        Vec2 screen_size = engine->get_screen_size();
+        const Vec2 screen_size = engine->get_screen_size();
 
-        float w = world_to_projection[3][0] * point->x + world_to_projection[3][1] * point->y + world_to_projection[3][
-                      2] * point->z + world_to_projection[3][3];
+        const float w = world_to_projection[3][0] * point->x + world_to_projection[3][1] * point->y +
+                        world_to_projection[3][
+                            2] * point->z + world_to_projection[3][3];
 
         if (w < 0.1f) return false;
 

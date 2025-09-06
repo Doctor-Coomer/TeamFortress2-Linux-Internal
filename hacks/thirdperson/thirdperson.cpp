@@ -7,10 +7,10 @@
 #include "../../interfaces/input.hpp"
 #include "../../interfaces/engine_trace.hpp"
 
-void trace_hull(Vec3 vecStart, Vec3 vecEnd, Vec3 vecHullMin, Vec3 vecHullMax, unsigned int mask) {
+void trace_hull(Vec3 vecStart, Vec3 vecEnd, Vec3 vecHullMin, Vec3 vecHullMax, const unsigned int mask) {
     ray_t ray = engine_trace->init_ray(&vecStart, &vecEnd, &vecHullMin, &vecHullMax);
-    struct trace_filter filter;
-    struct trace_t trace;
+    trace_filter filter{};
+    trace_t trace;
 
     engine_trace->trace_ray(&ray, mask, &filter, &trace);
 }
@@ -19,7 +19,7 @@ void trace_hull(Vec3 vecStart, Vec3 vecEnd, Vec3 vecHullMin, Vec3 vecHullMax, un
 // Using the input interface with a properly hooked ShouldDraw methods would be better.
 void thirdperson(view_setup *setup) {
     Player *localplayer = entity_list->get_localplayer();
-    if (localplayer == nullptr) return;
+    if (!localplayer) return;
 
     if (!config.visuals.thirdperson.enabled) {
         localplayer->set_thirdperson(false);
@@ -49,9 +49,9 @@ void thirdperson(view_setup *setup) {
         offset += up * config.visuals.thirdperson.y;
         offset -= forward * config.visuals.thirdperson.z;
 
-        Vec3 origin = localplayer->get_shoot_pos(); //pView->origin
-        Vec3 start = origin;
-        Vec3 end = origin + offset;
+        const Vec3 origin = localplayer->get_shoot_pos(); //pView->origin
+        //Vec3 start = origin;
+        const Vec3 end = origin + offset;
 
         /*
         if (Vars::Visuals::Thirdperson::Collide.Value)
@@ -62,7 +62,7 @@ void thirdperson(view_setup *setup) {
         struct trace_t trace;
             engine_trace->trace_hull(start, end, mins, maxs, MASK_SOLID, &trace);
         end = trace.endpos;
-      }
+          }
         */
 
         setup->origin = end;

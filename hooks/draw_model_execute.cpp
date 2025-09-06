@@ -1,14 +1,14 @@
-#include <string.h>
+//#include <string.h>
 
 #include "../vec.hpp"
 
-#include "../interfaces/entity_list.hpp"
+/*#include "../interfaces/entity_list.hpp"
 
 #include "../interfaces/material_system.hpp"
 #include "../classes/material.hpp"
 
 #include "../interfaces/model_render.hpp"
-#include "../interfaces/render_view.hpp"
+#include "../interfaces/render_view.hpp"*/
 
 #include "../hacks/chams/chams.cpp"
 

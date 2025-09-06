@@ -9,9 +9,9 @@
 
 #include "../gui/menu.cpp"
 
-void (*swap_window_original)(void *) = NULL;
+void (*swap_window_original)(void *) = nullptr;
 
-bool (*poll_event_original)(SDL_Event *) = NULL;
+bool (*poll_event_original)(SDL_Event *) = nullptr;
 
 
 bool poll_event_hook(SDL_Event *event) {
@@ -37,14 +37,13 @@ void watermark() {
 }
 
 void swap_window_hook(SDL_Window *window) {
-    static SDL_GLContext original_context = NULL, new_context = NULL;
+    static SDL_GLContext original_context = nullptr, new_context = nullptr;
 
     if (!new_context) {
         original_context = SDL_GL_GetCurrentContext();
         new_context = SDL_GL_CreateContext(window);
 
-        GLenum err = glewInit();
-        if (err != GLEW_OK) {
+        if (GLenum err = glewInit(); err != GLEW_OK) {
             print("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
             swap_window_original(window);
             return;

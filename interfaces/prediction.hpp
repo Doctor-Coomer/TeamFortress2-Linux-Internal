@@ -12,7 +12,7 @@ struct user_cmd;
 class IPrediction {
 public:
     virtual ~IPrediction(void) {
-    };
+    }
 
     virtual void init(void) = 0;
 
@@ -44,7 +44,7 @@ public:
 class Prediction : public IPrediction {
 public:
     virtual ~Prediction() {
-    };
+    }
 
     virtual void init() = 0;
 
@@ -89,7 +89,6 @@ public:
     virtual void _update(bool received_new_world_update, bool validframe, int incoming_acknowledged,
                          int outgoing_command) = 0;
 
-public:
     int last_ground;
     bool in_prediction;
     bool first_time_predicted;

@@ -9,9 +9,9 @@ public:
         void **vtable = *reinterpret_cast<void ***>(this);
 
         int (*world_to_screen_fn)(void *, Vec3 *, Vec3 *) = (int (*)(void *, Vec3 *, Vec3 *)) vtable[9];
-        int success = world_to_screen_fn(this, point, screen);
+        const int success = world_to_screen_fn(this, point, screen);
 
-        return (success == 0);
+        return success == 0;
     }
 };
 

@@ -1,7 +1,7 @@
 #ifndef KEYVALUES_HPP
 #define KEYVALUES_HPP
 
-#include <string.h>
+//#include <cstring>
 
 enum types_t {
     TYPE_NONE = 0,
@@ -24,7 +24,6 @@ class KeyValues {
         key_values_constructor_original(this, name);
     }
 
-private:
     int m_iKeyName;
     char *m_sValue;
     wchar_t *m_wsValue;

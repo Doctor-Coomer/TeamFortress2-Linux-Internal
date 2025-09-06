@@ -38,37 +38,37 @@ typedef struct {
 } ModelRenderInfo_t;
 
 enum MaterialVarFlags_t {
-    MATERIAL_VAR_DEBUG = (1 << 0),
-    MATERIAL_VAR_NO_DEBUG_OVERRIDE = (1 << 1),
-    MATERIAL_VAR_NO_DRAW = (1 << 2),
-    MATERIAL_VAR_USE_IN_FILLRATE_MODE = (1 << 3),
-    MATERIAL_VAR_VERTEXCOLOR = (1 << 4),
-    MATERIAL_VAR_VERTEXALPHA = (1 << 5),
-    MATERIAL_VAR_SELFILLUM = (1 << 6),
-    MATERIAL_VAR_ADDITIVE = (1 << 7),
-    MATERIAL_VAR_ALPHATEST = (1 << 8),
-    MATERIAL_VAR_MULTIPASS = (1 << 9),
-    MATERIAL_VAR_ZNEARER = (1 << 10),
-    MATERIAL_VAR_MODEL = (1 << 11),
-    MATERIAL_VAR_FLAT = (1 << 12),
-    MATERIAL_VAR_NOCULL = (1 << 13),
-    MATERIAL_VAR_NOFOG = (1 << 14),
-    MATERIAL_VAR_IGNOREZ = (1 << 15),
-    MATERIAL_VAR_DECAL = (1 << 16),
-    MATERIAL_VAR_ENVMAPSPHERE = (1 << 17),
-    MATERIAL_VAR_NOALPHAMOD = (1 << 18),
-    MATERIAL_VAR_ENVMAPCAMERASPACE = (1 << 19),
-    MATERIAL_VAR_BASEALPHAENVMAPMASK = (1 << 20),
-    MATERIAL_VAR_TRANSLUCENT = (1 << 21),
-    MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK = (1 << 22),
-    MATERIAL_VAR_NEEDS_SOFTWARE_SKINNING = (1 << 23),
-    MATERIAL_VAR_OPAQUETEXTURE = (1 << 24),
-    MATERIAL_VAR_ENVMAPMODE = (1 << 25),
-    MATERIAL_VAR_SUPPRESS_DECALS = (1 << 26),
-    MATERIAL_VAR_HALFLAMBERT = (1 << 27),
-    MATERIAL_VAR_WIREFRAME = (1 << 28),
-    MATERIAL_VAR_ALLOWALPHATOCOVERAGE = (1 << 29),
-    MATERIAL_VAR_IGNORE_ALPHA_MODULATION = (1 << 30),
+    MATERIAL_VAR_DEBUG = 1 << 0,
+    MATERIAL_VAR_NO_DEBUG_OVERRIDE = 1 << 1,
+    MATERIAL_VAR_NO_DRAW = 1 << 2,
+    MATERIAL_VAR_USE_IN_FILLRATE_MODE = 1 << 3,
+    MATERIAL_VAR_VERTEXCOLOR = 1 << 4,
+    MATERIAL_VAR_VERTEXALPHA = 1 << 5,
+    MATERIAL_VAR_SELFILLUM = 1 << 6,
+    MATERIAL_VAR_ADDITIVE = 1 << 7,
+    MATERIAL_VAR_ALPHATEST = 1 << 8,
+    MATERIAL_VAR_MULTIPASS = 1 << 9,
+    MATERIAL_VAR_ZNEARER = 1 << 10,
+    MATERIAL_VAR_MODEL = 1 << 11,
+    MATERIAL_VAR_FLAT = 1 << 12,
+    MATERIAL_VAR_NOCULL = 1 << 13,
+    MATERIAL_VAR_NOFOG = 1 << 14,
+    MATERIAL_VAR_IGNOREZ = 1 << 15,
+    MATERIAL_VAR_DECAL = 1 << 16,
+    MATERIAL_VAR_ENVMAPSPHERE = 1 << 17,
+    MATERIAL_VAR_NOALPHAMOD = 1 << 18,
+    MATERIAL_VAR_ENVMAPCAMERASPACE = 1 << 19,
+    MATERIAL_VAR_BASEALPHAENVMAPMASK = 1 << 20,
+    MATERIAL_VAR_TRANSLUCENT = 1 << 21,
+    MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK = 1 << 22,
+    MATERIAL_VAR_NEEDS_SOFTWARE_SKINNING = 1 << 23,
+    MATERIAL_VAR_OPAQUETEXTURE = 1 << 24,
+    MATERIAL_VAR_ENVMAPMODE = 1 << 25,
+    MATERIAL_VAR_SUPPRESS_DECALS = 1 << 26,
+    MATERIAL_VAR_HALFLAMBERT = 1 << 27,
+    MATERIAL_VAR_WIREFRAME = 1 << 28,
+    MATERIAL_VAR_ALLOWALPHATOCOVERAGE = 1 << 29,
+    MATERIAL_VAR_IGNORE_ALPHA_MODULATION = 1 << 30,
 };
 
 enum OverrideType_t {
@@ -80,8 +80,8 @@ enum OverrideType_t {
 
 void (*draw_model_execute_original)(void *, void *, ModelRenderInfo_t *, VMatrix *);
 
-void override_material(bool ignorez, bool wireframe, RGBA_float color, const char *mat_name) {
-    Material *material = material_system->find_material(mat_name, "Model textures", true, NULL);
+void override_material(const bool ignorez, const bool wireframe, const RGBA_float color, const char *mat_name) {
+    Material *material = material_system->find_material(mat_name, "Model textures", true, nullptr);
 
     if (!material)
         return;
@@ -99,9 +99,9 @@ void override_material(bool ignorez, bool wireframe, RGBA_float color, const cha
 
 void chams(void *me, void *state, ModelRenderInfo_t *pinfo, VMatrix *bone_to_world) {
     if (pinfo->entity_index < 1 || pinfo->entity_index >= entity_list->get_max_entities()) {
-        RGBA_float color = {1, 0, 1, 1};
+        constexpr RGBA_float color = {1, 0, 1, 1};
 
-        override_material(false, false, color, "dev/glow_color");
+        override_material(false, true, color, "dev/glow_color");
         return;
     }
 }

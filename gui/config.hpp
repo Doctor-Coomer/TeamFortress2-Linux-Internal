@@ -9,7 +9,7 @@
 #include "../vec.hpp"
 
 struct button {
-    int button;
+    int ibutton;
     bool waiting = false;
 };
 
@@ -20,11 +20,11 @@ struct Aim {
 
     bool silent = true;
 
-    struct button key = {.button = -SDL_BUTTON_X1};
+    button key = {.ibutton = -SDL_BUTTON_X2};
     bool use_key = true;
 
-    float fov = 45;
-    bool draw_fov = false;
+    float fov = 20;
+    bool draw_fov = true;
 
     bool auto_scope = false;
 
@@ -68,31 +68,31 @@ struct Esp {
 
 struct Visuals {
     struct Removals {
-        bool scope = false;
+        bool scope = true;
         bool zoom = false;
     } removals;
 
     struct Thirdperson {
-        struct button key = {.button = SDL_SCANCODE_LALT};
-        bool enabled = false;
-        float z = 150.0f;
+        button key = {.ibutton = -SDL_BUTTON_X1};
+        bool enabled = true;
+        float z = 250.0f;
         float y = 20.0f;
         float x = 0;
     } thirdperson;
 
-    bool override_fov = false;
-    float custom_fov = 90;
+    bool override_fov = true;
+    float custom_fov = 110;
 };
 
 struct Misc {
     bool bhop = true;
     bool bypasspure = true;
-    bool no_push = false;
+    bool no_push = true;
 };
 
 struct Debug {
-    int font_height = 14;
-    int font_weight = 400;
+    int font_height = 12;
+    int font_weight = 0;
     bool debug_render_all_entities = false;
 };
 
@@ -107,18 +107,14 @@ struct Config {
 inline static Config config;
 
 
-static bool is_button_down(struct button button) {
-    if (button.button >= 0) {
-        const uint8_t *keys = SDL_GetKeyboardState(NULL);
-
-        if (keys[button.button] == 1)
+static bool is_button_down(const button button) {
+    if (button.ibutton >= 0) {
+        if (const uint8_t *keys = SDL_GetKeyboardState(nullptr); keys[button.ibutton] == 1)
             return true;
 
         return false;
     } else {
-        Uint32 mouse_state = SDL_GetMouseState(NULL, NULL);
-
-        if (mouse_state & SDL_BUTTON(-button.button))
+        if (const Uint32 mouse_state = SDL_GetMouseState(nullptr, nullptr); mouse_state & SDL_BUTTON(-button.ibutton))
             return true;
 
         return false;
