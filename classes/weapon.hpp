@@ -5,6 +5,8 @@
 
 #include "../interfaces/global_vars.hpp"
 
+#include "../print.hpp"
+
 #define TICK_INTERVAL 0.015
 
 //https://github.com/Fedoraware/Fedoraware/blob/888d9338dbf08f6c55816c86d5887dd58cc28d98/Fedoraware/Fedoraware-TF2/src/SDK/Includes/Enums.h#L1081
@@ -820,6 +822,41 @@ public:
     return false;
   }
 
+  bool is_sniper_rifle(void) {
+    int weapon_type_id = this->get_type_id();
+    if (weapon_type_id == TF_WEAPON_SNIPERRIFLE         ||
+	weapon_type_id == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
+	weapon_type_id == TF_WEAPON_SNIPERRIFLE_DECAP)
+      {
+	return true;
+      }
+
+    int weapon_def_id = this->get_def_id();
+    if (weapon_def_id == Sniper_m_SniperRifle         ||
+	weapon_def_id == Sniper_m_SniperRifleR        ||
+	weapon_def_id == Sniper_m_TheBazaarBargain    ||
+	weapon_def_id == Sniper_m_TheHitmansHeatmaker ||
+	weapon_def_id == Sniper_m_TheClassic          ||
+	weapon_def_id == Sniper_m_FestiveSniperRifle  ||
+	weapon_def_id == Sniper_m_BloodBotkillerSniperRifleMkI ||
+	weapon_def_id == Sniper_m_CarbonadoBotkillerSniperRifleMkI ||
+	weapon_def_id == Sniper_m_DiamondBotkillerSniperRifleMkI ||
+	weapon_def_id == Sniper_m_GoldBotkillerSniperRifleMkI ||
+	weapon_def_id == Sniper_m_RustBotkillerSniperRifleMkI ||
+	weapon_def_id == Sniper_m_SilverBotkillerSniperRifleMkI ||
+	weapon_def_id == Sniper_m_GoldBotkillerSniperRifleMkII ||
+	weapon_def_id == Sniper_m_SilverBotkillerSniperRifleMkII ||
+	weapon_def_id == Sniper_m_ShootingStar ||
+	weapon_def_id == Sniper_m_TheAWPerHand ||
+	weapon_def_id == Sniper_m_TheMachina   ||
+	weapon_def_id == Sniper_m_TheSydneySleeper)
+      {
+	return true;
+      }
+
+    return false;
+  }
+  
   bool can_ambassador_headshot() {
     Entity* owner = this->get_owner_entity();
     if (owner == nullptr)

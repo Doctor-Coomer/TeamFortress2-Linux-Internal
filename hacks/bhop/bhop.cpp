@@ -6,12 +6,11 @@
 #include "../../classes/player.hpp"
 
 void bhop(user_cmd* user_cmd) {
-  if (config.misc.bhop == false) return;
+  if (config.misc.movement.bhop == false) return;
 
   Player* localplayer = entity_list->get_localplayer();
   if (localplayer == nullptr) return;
 
-  /*
   static bool static_jump = false, static_grounded = false, last_attempted = false;
   const bool last_jump = static_jump;
   const bool last_grounded = static_grounded;
@@ -23,27 +22,13 @@ void bhop(user_cmd* user_cmd) {
   const bool cur_grounded = static_grounded;
 
   if (cur_jump == true && last_jump == true && (cur_grounded ? !localplayer->is_ducking() : true)) {
-    if (!(cur_grounded && !last_grounded))
+    if (!(cur_grounded == true && last_grounded == false))
       user_cmd->buttons &= ~IN_JUMP;
-      
-    if (!(user_cmd->buttons & IN_JUMP) && cur_grounded && !last_attempted)
+
+    if (!(user_cmd->buttons & IN_JUMP) && cur_grounded == true && last_attempted == false)
       user_cmd->buttons |= IN_JUMP;
-  }    
-  */
-
-  static bool was_jumping = false;
-  bool on_ground = (localplayer->get_flags() & FL_ONGROUND);
-
-  if(user_cmd->buttons & IN_JUMP) {
-
-    if(!was_jumping && !on_ground) {
-      user_cmd->buttons &= ~IN_JUMP;
-    } else if(was_jumping) {
-      was_jumping = false;
-    }
-      
-  } else if(!was_jumping) {
-    was_jumping = true;
   }
+  
+  last_attempted = user_cmd->buttons & IN_JUMP;
 
 }

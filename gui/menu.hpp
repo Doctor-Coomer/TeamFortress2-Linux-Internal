@@ -1,24 +1,40 @@
+#ifndef MENU_HPP
+#define MENU_HPP
+
 #include "config.hpp"
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_internal.h"
 
-#include "imgui/dearimgui.hpp"
+#include "../imgui/dearimgui.hpp"
 
 #include <SDL2/SDL_mouse.h>
 
+#include "../hacks/navbot/navmesh.hpp"
+
+inline static SDL_Window* sdl_window = NULL;
 inline static bool menu_focused = false;
 
-void get_input(SDL_Event* event) {
+inline static bool did_render_pass = false;
+
+static void get_input(SDL_Event* event) {
   ImGui::KeybindEvent(event, &config.aimbot.key.waiting, &config.aimbot.key.button);
   ImGui::KeybindEvent(event, &config.visuals.thirdperson.key.waiting, &config.visuals.thirdperson.key.button);
 }
 
-void draw_aim_tab() {
+static void draw_watermark() {
+  ImGui::SetNextWindowPos(ImVec2(10, 10)); 
+  ImGui::SetNextWindowSize(ImVec2(150, 30));
+  ImGui::Begin("##Watermark", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+    
+  ImGui::TextCentered("I Use Arch BTW!!!");
+  ImGui::End();
+}
+
+static void draw_aim_tab() {
   ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 27);
   
   ImGui::Checkbox("Master", &config.aimbot.master);
-
 
   ImGui::EndGroup();
 
@@ -27,10 +43,18 @@ void draw_aim_tab() {
   ImGui::SameLine();
 
 
-  ImGui::BeginGroup();
+  ImGui::BeginChild("##AimbotMasterChild");
 
+  ImGui::BeginGroup();
+  ImGui::Text("General");
   ImGui::Checkbox("Auto Shoot", &config.aimbot.auto_shoot);  
 
+  const char* target_items[] = { "FOV", "Distance", "Least Health", "Most Health" };
+  ImGui::Text("Target: ");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(120);
+  ImGui::Combo("##TargetType", (int*)&config.aimbot.target_type, target_items, IM_ARRAYSIZE(target_items));
+  
   ImGui::Text("Aimbot botton: ");
   ImGui::SameLine();
   ImGui::KeybindBox(&config.aimbot.key.waiting, &config.aimbot.key.button);
@@ -44,15 +68,31 @@ void draw_aim_tab() {
   ImGui::SliderFloatHeightPad(" ", &config.aimbot.fov, 0.1f, 180.0f, 1, "%.0f\xC2\xB0");
   
   ImGui::Checkbox("Draw FOV", &config.aimbot.draw_fov);
+  ImGui::EndGroup();
 
-  ImGui::Checkbox("Sniper auto scope", &config.aimbot.auto_scope);
+  ImGui::NewLine();
+  ImGui::Separator();
+
+  ImGui::BeginGroup();
+  ImGui::Text("Class");
+  ImGui::Checkbox("Sniper: Auto Scope", &config.aimbot.auto_scope);
+  ImGui::Checkbox("Sniper: Auto Unscope", &config.aimbot.auto_unscope);
+  ImGui::Checkbox("Sniper: Scoped Only", &config.aimbot.scoped_only);
+  ImGui::EndGroup();
   
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+  ImGui::BeginGroup();
+  ImGui::Text("Misc");
   ImGui::Checkbox("Ignore Friends", &config.aimbot.ignore_friends);
+  ImGui::EndGroup();
   
-  ImGui::EndGroup();  
+  ImGui::EndChild();
 }
 
-void draw_esp_tab() {  
+static void draw_esp_tab() {  
   ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 27);
 
   ImGui::Checkbox("Master", &config.esp.master);
@@ -64,7 +104,7 @@ void draw_esp_tab() {
   ImGui::SameLine();
 
   /* ESP */
-  ImGui::BeginGroup();  
+  ImGui::BeginChild("##EspMasterChild");
 
   //Player
   ImGui::BeginGroup();
@@ -94,8 +134,15 @@ void draw_esp_tab() {
   ImGui::Text("Pickup");
   ImGui::Checkbox("Box##Pickup", &config.esp.pickup.box);
   ImGui::Checkbox("Name##Pickup", &config.esp.pickup.name);
-  ImGui::EndGroup();
 
+  ImGui::NewLine();
+  
+  //Objectives
+  ImGui::Text("Intelligence");
+  ImGui::Checkbox("Box##Intelligence", &config.esp.intelligence.box);
+  ImGui::Checkbox("Name##Intelligence", &config.esp.intelligence.name);  
+  ImGui::EndGroup();
+  
   ImGui::SameLine();
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
@@ -111,10 +158,10 @@ void draw_esp_tab() {
   ImGui::Checkbox("Team##Buildings", &config.esp.buildings.team);
   ImGui::EndGroup();
   
-  ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
-void draw_visuals_tab() {
+static void draw_visuals_tab() {
   ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 21);
 
   ImGui::Text(" ");
@@ -126,8 +173,8 @@ void draw_visuals_tab() {
   ImGui::SameLine();
 
   /* Visuals */
-  ImGui::BeginGroup();
-
+  ImGui::BeginChild("##VisualsMasterChild");
+  
   /* Removals */ //maybe make me a drop down
   ImGui::BeginGroup();
   ImGui::Text("Removals");
@@ -163,10 +210,10 @@ void draw_visuals_tab() {
   ImGui::SliderFloat(" ", &config.visuals.custom_fov, 30.1f, 150.0f, "%.0f\xC2\xB0");
   ImGui::EndGroup();
   
-  ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
-void draw_misc_tab() {
+static void draw_misc_tab() {
   ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 21);
 
   ImGui::Text(" ");
@@ -177,17 +224,48 @@ void draw_misc_tab() {
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
 
-  ImGui::BeginGroup();
+  /* Misc */
+  ImGui::BeginChild("##MiscMasterChild");
   
+  ImGui::Text("Movement");
+  ImGui::Checkbox("Bhop", &config.misc.movement.bhop);
+  ImGui::Checkbox("No Push", &config.misc.movement.no_push);  
+
+  ImGui::NewLine();
+
+  ImGui::Text("Exploits");
+  ImGui::Checkbox("Bypass sv_pure", &config.misc.exploits.bypasspure);
+  ImGui::Checkbox("No Engine Sleep", &config.misc.exploits.no_engine_sleep);  
+  
+  ImGui::EndChild();
+}
+
+static void draw_navbot_tab() {
+  ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 27);
+  
+  ImGui::Checkbox("Master", &config.navbot.master);
+
+  ImGui::EndGroup();
+  
+  ImGui::SameLine();
+  ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+  ImGui::SameLine();
+
+
+  ImGui::BeginChild("##NavbotMasterChild");
+
   ImGui::Text("General");
-  ImGui::Checkbox("Bhop", &config.misc.bhop);
-  ImGui::Checkbox("Bypass sv_pure", &config.misc.bypasspure);
-  ImGui::Checkbox("No Push", &config.misc.no_push);  
+  ImGui::Checkbox("Walk Path", &config.navbot.walk);
 
-  ImGui::EndGroup();
+  ImGui::NewLine();
+
+  ImGui::Checkbox("Look At Path", &config.navbot.look_at_path);
+  ImGui::SliderFloat("Look Smoothness", &config.navbot.look_smoothness, 0, 100);  
+
+  ImGui::EndChild();
 }
 
-void draw_debug_tab() {
+static void draw_debug_tab() {
   ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 21);
 
   ImGui::Text(" ");
@@ -197,17 +275,26 @@ void draw_debug_tab() {
   ImGui::SameLine();
   ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
   ImGui::SameLine();
-  
-  ImGui::BeginGroup();
+
+  /* Debug */
+  ImGui::BeginChild("##DebugMasterChild");
 
   ImGui::SliderInt("Font Height", &config.debug.font_height, 6, 60);  
   ImGui::SliderInt("Font Weight", &config.debug.font_weight, 50, 800);  
   ImGui::Checkbox("Draw All Entities", &config.debug.debug_render_all_entities);
+  ImGui::Checkbox("Draw Navmesh", &config.debug.debug_draw_navmesh);    
+  ImGui::Checkbox("Draw Navbot Path", &config.debug.debug_draw_navbot_path);
+  ImGui::Checkbox("Draw Navmesh Current Area", &config.debug.debug_draw_navbot_current_area);  
+  ImGui::Checkbox("Draw Navmesh Next Area", &config.debug.debug_draw_navbot_next_area);  
+  ImGui::Checkbox("Draw Navbot Goal", &config.debug.debug_draw_navbot_goal);  
+  if(ImGui::Button("Force reparse navmesh")) {
+    mesh.map_name = "";
+  }
   
-  ImGui::EndGroup();
+  ImGui::EndChild();
 }
 
-void draw_tab(ImGuiStyle* style, const char* name, int* tab, int index) {
+static void draw_tab(ImGuiStyle* style, const char* name, int* tab, int index) {
   ImVec4 orig_box_color = ImVec4(0.15, 0.15, 0.15, 1);
   
   if (*tab == index) {
@@ -222,32 +309,21 @@ void draw_tab(ImGuiStyle* style, const char* name, int* tab, int index) {
   style->Colors[ImGuiCol_Button] = ImVec4(0.15, 0.15, 0.15, 1);
 }
 
-void draw_menu() {
+static void draw_menu() {
   ImGui::SetNextWindowSize(ImVec2(600, 350));
   if (ImGui::Begin("Team Fortress 2 GNU/Linux", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
-    static int tab = 0;
 
-    ImGuiStyle* style = &ImGui::GetStyle();
-
-    style->Colors[ImGuiCol_WindowBg]         = ImVec4(0.1, 0.1, 0.1, 1);
-    style->Colors[ImGuiCol_TitleBgActive]    = ImVec4(0.05, 0.05, 0.05, 1);
-    style->Colors[ImGuiCol_TitleBg]          = ImVec4(0.05, 0.05, 0.05, 1);
-    style->Colors[ImGuiCol_CheckMark]        = ImVec4(0.869346734, 0.450980392, 0.211764706, 1);
-    style->Colors[ImGuiCol_FrameBg]          = ImVec4(0.15, 0.15, 0.15, 1);
-    style->Colors[ImGuiCol_FrameBgHovered]   = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-    style->Colors[ImGuiCol_FrameBgActive]    = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-    style->Colors[ImGuiCol_ButtonHovered]    = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-    style->Colors[ImGuiCol_ButtonActive]     = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-    style->Colors[ImGuiCol_SliderGrab]       = ImVec4(0.869346734, 0.450980392, 0.211764706, 1);
-    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.899346734, 0.480980392, 0.241764706, 1);
-    style->GrabMinSize = 2;
     
+    ImGuiStyle* style = &ImGui::GetStyle();
+    
+    static int tab = 0;
     ImGui::BeginGroup();
     draw_tab(style, "Aimbot", &tab, 0);
     draw_tab(style, "ESP", &tab, 1);
     draw_tab(style, "Visuals", &tab, 2);
     draw_tab(style, "Misc", &tab, 3);
-    draw_tab(style, "Debug", &tab, 4);
+    draw_tab(style, "Navbot", &tab, 4);
+    draw_tab(style, "Debug", &tab, 5);
 
     switch (tab) {
     case 0:
@@ -263,6 +339,9 @@ void draw_menu() {
       draw_misc_tab();
       break;
     case 4:
+      draw_navbot_tab();
+      break;
+    case 5:
       draw_debug_tab();
       break;      
     }
@@ -271,3 +350,4 @@ void draw_menu() {
   ImGui::End();  
 }
 
+#endif

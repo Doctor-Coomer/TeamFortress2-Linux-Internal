@@ -3,7 +3,7 @@
 void* (*load_white_list_original)(void*, const char*);
 
 void* load_white_list_hook(void* me, const char* str) {
-  if (config.misc.bypasspure == true) {
+  if (config.misc.exploits.bypasspure == true) {
     return nullptr;
   }
 

@@ -105,6 +105,14 @@ public:
     draw_set_text_color_fn(this, r, g, b, a);
   }
 
+  void draw_set_text_color(RGBA color) {
+    void** vtable = *(void ***)this;
+
+    void (*draw_set_text_color_fn)(void*, int, int, int, int) = (void (*)(void*, int, int, int, int))vtable[18];
+
+    draw_set_text_color_fn(this, color.r, color.g, color.b, color.a);
+  }
+  
   void draw_set_text_pos(unsigned int x, unsigned int y) {
     void** vtable = *(void ***)this;
 

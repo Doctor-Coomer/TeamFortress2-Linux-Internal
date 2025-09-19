@@ -21,7 +21,16 @@ enum class_id {
   PILL_OR_STICKY = 217,
   FLARE = 257,
   CROSSBOW_BOLT = 259,
-  SNIPER_DOT = 118
+  SNIPER_DOT = 118,
+  CAPTURE_FLAG = 26,
+  OBJECTIVE_RESOURCE = 235
+};
+
+enum tf_team {
+  TEAM_UNKNOWN = 0,
+  TEAM_SPECTATOR,
+  TEAM_RED,
+  TEAM_BLU
 };
 
 enum pickup_type {
@@ -78,7 +87,7 @@ public:
     // x + 0x328, y + 0x332, z + 0x346
     return *(Vec3*)(this + 0x328);
   }
-  
+
   int get_ent_flags(void) {
     return *(int*)(this + 0x460);
   }
@@ -92,8 +101,8 @@ public:
     return (void*)(this + 0x8);
   }
 
-  int get_team(void)  {
-    return *(int*)(this + 0xDC);
+  enum tf_team get_team(void)  {
+    return (enum tf_team)*(int*)(this + 0xDC);
   }
   
   int get_index(void) {
@@ -110,24 +119,6 @@ public:
     if (base_class == NULL) return "";
     
     return (const char*)*(unsigned long*)(base_class + 0x8);
-  }
-
-  enum pickup_type get_pickup_type(void) {
-    const char* model_name = get_model_name();
-    
-    if (strstr(model_name, "models/items/ammopack")) {
-      return pickup_type::AMMOPACK;
-    }
-
-    if (strstr(model_name, "models/items/medkit")                     ||
-	strstr(model_name, "models/props_medieval/medieval_meat.mdl") ||
-	strstr(model_name, "models/props_halloween/halloween_medkit")
-	)
-      {
-	return pickup_type::MEDKIT;
-      }
-
-    return pickup_type::UNKNOWN;
   }
   
   bool is_dormant(void) {
@@ -175,6 +166,25 @@ public:
     }
 
     return false;
+  }
+
+  
+  enum pickup_type get_pickup_type(void) {
+    const char* model_name = get_model_name();
+    
+    if (strstr(model_name, "models/items/ammopack")) {
+      return pickup_type::AMMOPACK;
+    }
+
+    if (strstr(model_name, "models/items/medkit")                     ||
+	strstr(model_name, "models/props_medieval/medieval_meat.mdl") ||
+	strstr(model_name, "models/props_halloween/halloween_medkit")
+	)
+      {
+	return pickup_type::MEDKIT;
+      }
+
+    return pickup_type::UNKNOWN;
   }
 
 };

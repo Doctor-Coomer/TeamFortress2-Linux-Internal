@@ -1,3 +1,4 @@
+#include "memory.hpp"
 #include "print.hpp"
 
 #include "random_seed.hpp"
@@ -25,13 +26,14 @@
 #include "interfaces/move_helper.hpp"
 #include "interfaces/game_movement.hpp"
 #include "interfaces/client_state.hpp"
+#include "interfaces/game_event_manager.hpp"
 
 #include "hooks/hooks.cpp"
 #include "libsigscan/libsigscan.h"
 #include "funchook/funchook.h"
 
 #include "hooks/sdl.cpp"
-//#include "hooks/vulkan.cpp"
+#include "hooks/vulkan.cpp"
 
 #include "hooks/client_mode_create_move.cpp"
 #include "hooks/client_create_move.cpp"
@@ -45,6 +47,8 @@
 #include "hooks/should_draw_local_player.cpp"
 #include "hooks/should_draw_this_player.cpp"
 #include "hooks/draw_view_models.cpp"
+#include "hooks/fire_event_client_side.cpp"
+#include "hooks/frame_stage_notify.cpp"
 
 #include "vec.hpp"
 
@@ -52,11 +56,12 @@ void** client_mode_vtable;
 void** vgui_vtable;
 void** client_vtable;
 void** model_render_vtable;
+void** game_event_manager_vtable;
 
 funchook_t* funchook;
 
 __attribute__((constructor))
-void entry() {
+void entry() {  
   // Interfaces
   client = (Client*)get_interface("./tf/bin/linux64/client.so", "VClient017");
   engine = (Engine*)get_interface("./bin/linux64/engine.so", "VEngineClient014");
@@ -97,14 +102,29 @@ void entry() {
 
   convar_system = (ConvarSystem*)get_interface("./bin/linux64/libvstdlib.so", "VEngineCvar004");
 
-  prediction = (Prediction*)get_interface("./tf/bin/linux64/client.so", "VClientPrediction001");
-
-  steam_client = (SteamClient*)get_interface("../../../linux64/steamclient.so", "SteamClient020");
-
-  int steam_pipe = steam_client->create_steam_pipe();
-  int steam_user = steam_client->connect_to_global_user(steam_pipe);
-  steam_friends = (SteamFriends*)steam_client->get_steam_friends_interface(steam_user, steam_pipe, "SteamFriends017");
+  game_event_manager = (GameEventManager*)get_interface("./bin/linux64/engine.so", "GAMEEVENTSMANAGER002");
+  {
+    std::vector<const char*> events = {	"client_beginconnect", "client_connected", "client_disconnect", "game_newmap",
+					"teamplay_round_start", "scorestats_accumulated_update", "mvm_reset_stats",
+					"player_connect_client", "player_spawn", "player_changeclass", "player_hurt",
+					"vote_cast", "item_pickup", "revive_player_notify", "localplayer_respawn"};
+    
+    for (const char* event : events) {
+      game_event_manager->add_listener((IGameEventListener*)game_event_manager, event, false);
+      
+      if (!game_event_manager->find_listener((IGameEventListener*)game_event_manager, event)) {
+	print("Failed to add event listener: %s\n", event);
+      }
+    }
+  }
   
+  {
+    steam_client = (SteamClient*)get_interface("../../../linux64/steamclient.so", "SteamClient020");
+    int steam_pipe = steam_client->create_steam_pipe();
+    int steam_user = steam_client->connect_to_global_user(steam_pipe);
+    steam_friends = (SteamFriends*)steam_client->get_steam_friends_interface(steam_user, steam_pipe, "SteamFriends017");
+  }
+
   client_vtable = *(void ***)client;
   void* hud_process_input_addr = client_vtable[10];
   __uint32_t client_mode_eaddr = *(__uint32_t *)((__uint64_t)(hud_process_input_addr) + 0x3);
@@ -131,7 +151,7 @@ void entry() {
   } else {
     print("Client::CreateMove hooked\n");
   }
-
+  
   override_view_original = (void (*)(void*, view_setup*))client_mode_vtable[17];  
   if (!write_to_table(client_mode_vtable, 17, (void*)override_view_hook)) {
     print("OverrideView hook failed\n");
@@ -147,7 +167,6 @@ void entry() {
   }
   
   vgui_vtable = *(void ***)vgui;
-
   paint_traverse_original = (void (*)(void*, void*, __int8_t, __int8_t))vgui_vtable[42];  
   if (!write_to_table(vgui_vtable, 42, (void*)paint_traverse_hook)) {
     print("PaintTraverse hook failed\n");
@@ -155,15 +174,31 @@ void entry() {
     print("PaintTraverse hooked\n");
   }
 
-  model_render_vtable = *(void ***)model_render;  
-  
+  model_render_vtable = *(void ***)model_render;    
   draw_model_execute_original = (void (*)(void*, void*, ModelRenderInfo_t*, VMatrix*))model_render_vtable[19];  
   if (!write_to_table(model_render_vtable, 19, (void*)draw_model_execute_hook)) {
     print("DrawModelExecute hook failed\n");
   } else {
     print("DrawModelExecute hooked\n");
   }
+  
+  game_event_manager_vtable = *(void***)game_event_manager;
+  fire_event_client_side_original = (bool (*)(void*, GameEvent*))game_event_manager_vtable[9];
+  if (!write_to_table(game_event_manager_vtable, 9, (void*)fire_event_client_side_hook)) {
+    print("FireEventClientSide hook failed\n");
+  } else {
+    print("FireEventClientSide hooked\n");
+  }  
 
+  
+  frame_stage_notify_original = (void (*)(void*, ClientFrameStage))client_vtable[35];
+  if (!write_to_table(client_vtable, 35, (void*)frame_stage_notify_hook)) {
+    print("FrameStageNotify hook failed\n");
+  } else {
+    print("FrameStageNotify hooked\n");
+  }  
+  
+  
   // Non-VMT Function hooks
   funchook = funchook_create();
   
@@ -208,15 +243,124 @@ void entry() {
   }  
 
   key_values_constructor_original = (KeyValues* (*)(void*, const char*))sigscan_module("client.so", "55 31 C0 66 0F EF C0 48 89 E5 53");
+
+  
+  // Hook Vulkan if present
+  // Determine if we're in Vulkan mode
+  void* lib_dxvk_base_address = get_module_base_address("libdxvk_d3d9.so");
+  if (lib_dxvk_base_address != nullptr) {  
+    void* lib_vulkan_handle = dlopen("/run/host/usr/lib/libvulkan.so.1", RTLD_LAZY | RTLD_NOLOAD);
+  
+    if (lib_vulkan_handle != nullptr) {
+      print("Vulkan loaded at %p\n", lib_vulkan_handle);
+
+      // https://github.com/bruhmoment21/UniversalHookX/blob/main/UniversalHookX/src/hooks/backend/vulkan/hook_vulkan.cpp#L47
+      VkInstanceCreateInfo create_info = {};
+      constexpr const char* instance_extension = "VK_KHR_surface";
+
+      create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+      create_info.enabledExtensionCount = 1;
+      create_info.ppEnabledExtensionNames = &instance_extension;
+  
+      // Create Vulkan Instance without any debug feature
+      vkCreateInstance(&create_info, vk_allocator, &vk_instance);
+  
+      uint32_t gpu_count;
+      vkEnumeratePhysicalDevices(vk_instance, &gpu_count, NULL);
+      IM_ASSERT(gpu_count > 0);
+
+      VkPhysicalDevice* gpus = new VkPhysicalDevice[sizeof(VkPhysicalDevice) * gpu_count];
+      vkEnumeratePhysicalDevices(vk_instance, &gpu_count, gpus);
+
+      // If a number >1 of GPUs got reported, find discrete GPU if present, or use first one available. This covers
+      // most common cases (multi-gpu/integrated+dedicated graphics). Handling more complicated setups (multiple
+      // dedicated GPUs) is out of scope of this sample.
+      int use_gpu = 0;
+      for (int i = 0; i < (int)gpu_count; ++i) {
+	VkPhysicalDeviceProperties properties;
+	vkGetPhysicalDeviceProperties(gpus[i], &properties);
+	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+	  use_gpu = i;
+	  break;
+	}
+      }
+	
+      vk_physical_device = gpus[use_gpu];
+
+      delete[] gpus;
+
+      vkGetPhysicalDeviceQueueFamilyProperties(vk_physical_device, &count, NULL);
+
+      queue_families = (VkQueueFamilyProperties*)malloc(count*sizeof(VkQueueFamilyProperties));
+
+      vkGetPhysicalDeviceQueueFamilyProperties(vk_physical_device, &count, queue_families);
+
+      for (uint32_t i = 0; i < count; ++i) {
+	if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+	  queue_family = i;
+	  break;
+	}
+      }
+  
+      if (queue_family == (uint32_t)-1) {
+	print("queue_family fail\n");
+      }
+  
+      constexpr const char* device_extension = "VK_KHR_swapchain";
+      constexpr const float queue_priority = 1.0f;
+
+      VkDeviceQueueCreateInfo queue_info = { };
+      queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+      queue_info.queueFamilyIndex = queue_family;
+      queue_info.queueCount = 1;
+      queue_info.pQueuePriorities = &queue_priority;
+
+      VkDeviceCreateInfo create_info2 = { };
+      create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+      create_info2.queueCreateInfoCount = 1;
+      create_info2.pQueueCreateInfos = &queue_info;
+      create_info.enabledExtensionCount = 1;
+      create_info.ppEnabledExtensionNames = &device_extension;
+
+      VkDevice vk_fake_device = VK_NULL_HANDLE;
+
+      vkCreateDevice(vk_physical_device, (const VkDeviceCreateInfo*)&create_info, vk_allocator, &vk_fake_device);
+      if (vk_fake_device == nullptr) {
+	print("Failed to create Vulkan dummy device\n");
+	return;
+      }
+      
+      queue_present_original = (VkResult (*)(VkQueue, const VkPresentInfoKHR*))vkGetDeviceProcAddr(vk_fake_device, "vkQueuePresentKHR");
+      acquire_next_image_original = (VkResult (*)(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, VkFence, uint32_t*))vkGetDeviceProcAddr(vk_fake_device, "vkAcquireNextImageKHR");
+      acquire_next_image2_original = (VkResult (*)(VkDevice, const VkAcquireNextImageInfoKHR*,  uint32_t*))vkGetDeviceProcAddr(vk_fake_device, "vkAcquireNextImage2KHR");
+      create_swapchain_original = (VkResult (*)(VkDevice, const VkSwapchainCreateInfoKHR*, const VkAllocationCallbacks*, VkSwapchainKHR*))vkGetDeviceProcAddr(vk_fake_device, "vkCreateSwapchainKHR");
+
+      vkDestroyDevice(vk_fake_device, vk_allocator);
+
+      // Hook the functions
+      rv = funchook_prepare(funchook, (void**)&queue_present_original, (void*)queue_present_hook);
+      if (rv != 0) {
+      }  
+
+      rv = funchook_prepare(funchook, (void**)&acquire_next_image_original, (void*)acquire_next_image_hook);
+      if (rv != 0) {
+      }  
+
+      rv = funchook_prepare(funchook, (void**)&acquire_next_image2_original, (void*)acquire_next_image2_hook);
+      if (rv != 0) {
+      }  
+
+      rv = funchook_prepare(funchook, (void**)&create_swapchain_original, (void*)create_swapchain_hook);
+      if (rv != 0) {
+      }  
+
+      dlclose(lib_vulkan_handle);
+    }
+  }
   
   rv = funchook_install(funchook, 0);
   if (rv != 0) {
     print("Non-VMT related hooks failed\n");
-  } else {
-    print("InCond hooked\n");
-    print("LoadWhiteList hooked\n");
-    print("CL_Move hooked\n");
-    //print("vkQueuePresentKHR hooked\n");
   }
 
   // Bespoke SDL hooking
@@ -239,32 +383,23 @@ void entry() {
     return;
   }
 
-  dlclose(lib_sdl_handle);
-
-  // TODO: Hook vulkan
-  /*
-  void* lib_vulkan_handle = dlopen("/run/host/usr/lib/libvulkan.so.1.4.313", RTLD_LAZY | RTLD_NOLOAD);
   
-  if (!lib_vulkan_handle) {
-    print("Failed to load vulkan\n");
+  if (!sdl_hook(lib_sdl_handle, "SDL_GetWindowFlags", (void*)get_window_flags_hook, (void **)&get_window_flags_original)) {
+    print("Failed to hook SDL_GetWindowFlags\n");
     return;
   }
 
-  queue_present_original = (VkResult (*)(VkQueue, const VkPresentInfoKHR*))dlsym(lib_vulkan_handle, "vkQueuePresentKHR");
-
-  if (!queue_present_original) {
-    print("Failed to locate vkQueuePresentKHR\n");
-  } else {
-    print("vkQueuePresentKHR located at %p\n", queue_present_original);
+  if (!sdl_hook(lib_sdl_handle, "SDL_GetWindowWMInfo", (void*)get_window_WM_info_hook, (void **)&get_window_WM_info_original)) {
+    print("Failed to hook SDL_GetWindowWMInfo\n");
+    return;
+  }
+  
+  if (!sdl_hook(lib_sdl_handle, "SDL_GetWindowSize", (void*)get_window_size_hook, (void **)&get_window_size_original)) {
+    print("Failed to hook SDL_GetWindowSize\n");
+    return;
   }
 
-  rv = funchook_prepare(funchook, (void**)&queue_present_original, (void*)queue_present_hook);
-  if (rv != 0) {
-  }  
-  */
-  
-  //dlclose(lib_vulkan_handle);  
-
+  dlclose(lib_sdl_handle);
   
   // Misc static variables and hookable things
   unsigned long func_address_2 = (unsigned long)sigscan_module("client.so", "48 8D 05 ? ? ? ? BA ? ? ? ? 89 10"); // credz: vannie / @clsendmove on github
@@ -302,12 +437,21 @@ void exit() {
   if (!write_to_table(model_render_vtable, 19, (void*)draw_model_execute_original)) {
     print("DrawModelExecute failed to restore hook\n");
   }
+  
+  if (!write_to_table(game_event_manager_vtable, 9, (void*)fire_event_client_side_original)) {
+    print("FireEventClientSide failed to restore hook\n");
+  }
 
+  if (!write_to_table(client_vtable, 35, (void*)frame_stage_notify_original)) {
+    print("FrameStageNotify failed to restore hook\n");
+  }
+
+  
   // Unhook Non-VMT Functions
   funchook_uninstall(funchook, 0);
 
   // Unhook SDL
-  void *lib_sdl_handle = dlopen("/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0", RTLD_LAZY | RTLD_NOLOAD);
+  void* lib_sdl_handle = dlopen("/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0", RTLD_LAZY | RTLD_NOLOAD);
 
   if (!restore_sdl_hook(lib_sdl_handle, "SDL_GL_SwapWindow", (void*)swap_window_original)) {
     print("Failed to restore SDL_GL_SwapWindow\n");
@@ -317,12 +461,25 @@ void exit() {
     print("Failed to restore SDL_PollEvent\n");
   }
 
+  if (!restore_sdl_hook(lib_sdl_handle, "SDL_GetWindowFlags", (void*)get_window_flags_original)) {
+    print("Failed to restore SDL_GetWindowFlags\n");
+  }
+
+  if (!restore_sdl_hook(lib_sdl_handle, "SDL_GetWindowWMInfo", (void*)get_window_WM_info_original)) {
+    print("Failed to restore SDL_GetWindowWMInfo\n");
+  }
+
+  if (!restore_sdl_hook(lib_sdl_handle, "SDL_GetWindowSize", (void*)get_window_size_original)) {
+    print("Failed to restore SDL_GetWindowSize\n");
+  }
+
   dlclose(lib_sdl_handle);
 
-  // Fix thirdperson hack still being enabled when not injected
+  // Fix thirdperson hack still being enabled when uninjecting
   {
     Player* localplayer = entity_list->get_localplayer();
-    localplayer->set_thirdperson(false);
+    if (localplayer != nullptr)
+      localplayer->set_thirdperson(false);
   }
   
   // Fix cursor visibility when we've removed/unhooked the menu

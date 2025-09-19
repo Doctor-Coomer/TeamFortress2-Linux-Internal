@@ -10,6 +10,7 @@ class Engine {
 public:
   int get_localplayer_index(void) {
     void** vtable = *(void ***)this;
+
     int (*get_localplayer_index_fn)(void*) = (int (*)(void*))vtable[12];
     
     return get_localplayer_index_fn(this);
@@ -30,19 +31,35 @@ public:
 
   bool is_in_game(void) {
     void** vtable = *(void ***)this;
+
     bool (*is_in_game_fn)(void*) = (bool (*)(void*))vtable[26];
 
     return is_in_game_fn(this);
   }
 
+  const char* get_level_name(void) {
+    void** vtable = *(void ***)this;
+
+    const char* (*get_level_name_fn)(void*) = (const char* (*)(void*))vtable[51];
+
+    return get_level_name_fn(this);
+  }
 
   bool get_player_info(int entity_index, player_info* pinfo) {
     void** vtable = *(void ***)this;
+
     bool (*get_player_info_fn)(void*, int, player_info*) = (bool (*)(void*, int, player_info*))vtable[8];
 
     return get_player_info_fn(this, entity_index, pinfo);
   }
 
+  int get_player_index_from_id(int user_id) {
+    void** vtable = *(void ***)this;
+
+    int (*get_player_index_from_id_fn)(void*, int) = (int (*)(void*, int))vtable[9];
+
+    return get_player_index_from_id_fn(this, user_id);
+  }
 };
 
 static inline Engine* engine;

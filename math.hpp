@@ -17,6 +17,17 @@ inline static float distance_3d(Vec3 location_one, Vec3 location_two) {
 	      ((location_one.z - location_two.z)*(location_one.z - location_two.z)));
 }
 
+inline static float distance_squared_2d(Vec3 location_one, Vec3 location_two) {
+  return (location_one.x - location_two.x)*(location_one.x - location_two.x) + (location_one.y - location_two.y)*(location_one.y - location_two.y);
+}
+
+inline static float azimuth_to_signed(float yaw) {
+  yaw = std::fmod(yaw, 360.0f);
+  if (yaw > 180.0f) yaw -= 360.0f;
+  if (yaw <= -180.0f) yaw += 360.0f;
+  return yaw;
+}
+
 inline static void angle_vectors(Vec3 angles, Vec3* forward, Vec3* right, Vec3* up) {
   double sp, sy, sr, cp, cy, cr;
   sincos(angles.x * pideg, &sp, &cp);
@@ -44,5 +55,7 @@ inline static void angle_vectors(Vec3 angles, Vec3* forward, Vec3* right, Vec3* 
     }
   }
 }
+
+inline float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 #endif

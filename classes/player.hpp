@@ -5,10 +5,14 @@
 #include "../interfaces/entity_list.hpp"
 #include "../interfaces/attribute_manager.hpp"
 
+#include "../entity_cache.hpp"
+
 #include "entity.hpp"
 #include "weapon.hpp"
 
 #include "../vec.hpp"
+#include "../print.hpp"
+
 
 struct user_cmd;
 
@@ -208,10 +212,11 @@ public:
    
   bool is_friend(void) {
     player_info pinfo;
-    if (!engine->get_player_info(this->get_index(), &pinfo)) return false; 
-    if (pinfo.friends_id == 0) return false; //bot usually
-    
-    return steam_friends->is_friend(pinfo.friends_id);
+    if (engine->get_player_info(this->get_index(), &pinfo) && pinfo.friends_id != 0 && pinfo.fakeplayer != true) { 
+      return friend_cache[this];
+    }
+
+    return false;
   }
 
   int get_health(void) {
@@ -266,7 +271,7 @@ public:
       return (Vec3){bone_to_world_out[bone_num][0][3], bone_to_world_out[bone_num][1][3], bone_to_world_out[bone_num][2][3]};
     }
 
-    return (Vec3){0.0f, 0.0f, 0.0f};
+    return Vec3{0.0f, 0.0f, 0.0f};
   }
   
   int get_head_bone(void) {
@@ -287,10 +292,10 @@ public:
 
     return 0;
   }
+  
+  int setup_bones(void* bone_to_world_out, int max_bones, int bone_mask, float current_time) {
+    void** vtable = *(void***)this;
     
-  int setup_bones(void *bone_to_world_out, int max_bones, int bone_mask, float current_time) {
-    void** vtable = *(void ***)this;
-
     int (*setup_bones_fn)(void*, void*, int, int, float) = (int (*)(void*, void*, int, int, float))vtable[96];
 
     return setup_bones_fn(this, bone_to_world_out, max_bones, bone_mask, current_time);
@@ -299,7 +304,7 @@ public:
   void set_thirdperson(bool value) {
     *(bool*)(this + 0x240C) = value;
   }
-
+  
   void switch_thirdperson(void) {
     void** vtable = *(void ***)this;
 

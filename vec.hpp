@@ -39,6 +39,10 @@ struct Vec3 {
   Vec3 operator-(const Vec3 v) {
     return Vec3{x - v.x, y - v.y, z - v.z};
   }
+
+  bool operator!=(const Vec3 v) {
+    return (this->x != v.x && this->y != v.y && this->z != v.z);
+  }
 };
 
 struct __attribute__((aligned(16))) Vec3_aligned {

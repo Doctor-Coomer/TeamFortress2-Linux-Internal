@@ -1,12 +1,16 @@
 # What is this?
-This is a program that is compiled into a Shared Object, and is used to give Extra Sensory Perception, automatic aiming, and automate player movement, in the game "Team Fortress 2". In a nutshell, this is a hack/cheat.  
+This is a program that is compiled into a [Shared Object](https://en.wikipedia.org/wiki/Shared_library), and is used to give Extrasensory Perception, automate gameplay, and overall enhance the game through removing restrictions and adding extra features, for "Team Fortress 2". In a nutshell, this is a hack/cheat.  
   
-Development is intermittent, as there is currently only one person with push and merge rights at this time. Please read the [I want to contribute!](#-i-want-to-contribute!) section for more detail.
+Development is intermittent, as there is currently only one person (me) with push and merge rights (a Project Maintainer) at this time. Please read the [I want to contribute!](#-i-want-to-contribute!) section for more detail.
   
-Also, this project started as an unfaithful port of [this internal hack](https://github.com/faluthe/tf_c) to C++.  
+Also, this project started as an unfaithful port of [this internal hack](https://github.com/faluthe/tf_c) to C++, but has far surpassed the goal of "just a port".  
 
 # How does this work?
-It internally (as a program that is injected inside tf2's process) reads and writes memory. A notable feature of it's functionality is using exposed symbols of other Shared Objects used by the game to run the game's own code against itself. The hack accomplishes this via interfaces of the game's own classes.
+It internally (as a program that is injected inside TF2's process) reads and writes memory to the game. A notable feature of it's functionality is using exposed symbols of other Shared Objects used by the game to run the game's own code against itself. The hack accomplishes this via interfaces of the game's own classes.  
+  
+For more information about Source Engine interfaces and structures, there is the [Source SDK 2013 Multiplayer](https://github.com/ValveSoftware/source-sdk-2013) from Valve Software.  
+  
+There are also many more hacks this program does to achieve functionality outside of what the Source SDK intended.  
 
 # How to compile
 ### Cloning Repository
@@ -60,7 +64,7 @@ Library loaded successfully at 0x12345678900. Use Ctrl+C to unload.
   - Health
   - Flags
 * Visuals
-  - Remove scope & zoom
+  - Remove scope overlay
   - Override FOV
 * Bhop
 * sv_pure bypass
@@ -76,11 +80,17 @@ Hello, I ([Dr_Coomer](https://github.com/Doctor-Coomer)) can be busy outside thi
 If you want to contribute, please keep these in mind:  
 - This project uses snake_case
 - This project uses a [Unity Build](https://en.wikipedia.org/wiki/Unity_build) paradigm
-  
-If you contribute entirely new features and files, I will most likely sit down and rewrite your entire pull request to fit with those two things. That is not a reason to not contribute, but that is a reason why your changes may take a while to add. All contributions are valuable.  
+- I attempt to prioritize straight forward and simple, yet robust, C++ code <!-- a link to a blog explaining my preferred style of "modern C++" should be added here -->
+
+If you contribute entirely new features and files, I will most likely sit down and rewrite your entire pull request to fit with those points. That isn't a reason to not contribute, but that is a reason why your changes may take a while to add. All contributions are valuable.  
 
 # TODO
 * More robust build system
 * Name project (?)
 * ESP using IMGUI (Eventually?)
 * Add Engine Prediction
+* Add Dormant ESP fade
+* Add more game modes to navbot
+* Add roaming to navbot
+* Add building aimbot
+* 

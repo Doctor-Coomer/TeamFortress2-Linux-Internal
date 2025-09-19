@@ -4,7 +4,7 @@
 
 bool in_cond_hook(void* me, int mask) {
 
-  if (mask == TF_COND_ZOOMED && config.visuals.removals.scope == true) { //if they player is scoped
+  if (mask == TF_COND_ZOOMED && config.visuals.removals.scope == true) { //if the player is scoped
     return false;
   }
 

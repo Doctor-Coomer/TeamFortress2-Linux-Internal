@@ -1,21 +1,22 @@
 #include "../hacks/esp/esp.hpp"
+#include "../hacks/esp/esp_player.cpp"
+#include "../hacks/esp/esp_entity.cpp"
 
-#include "../gui/config.hpp"
+#include "../hacks/navbot/draw_navmesh.cpp"
 
 #include <cstring>
 #include <unistd.h>
 #include <wchar.h>
 #include <string>
 
+#include "../gui/config.hpp"
+
 #include "../interfaces/engine.hpp"
 #include "../interfaces/surface.hpp"
 #include "../interfaces/entity_list.hpp"
 
 #include "../classes/player.hpp"
-
-#include "../hacks/esp/esp_player.cpp"
-#include "../hacks/esp/esp_entity.cpp"
-
+ 
 void (*paint_traverse_original)(void*, void*, __int8_t, __int8_t) = NULL;
 
 void* vgui;
@@ -63,8 +64,9 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
     surface->text_set_font_glyph_set(esp_entity_font, "ProggySquare", config.debug.font_height, config.debug.font_weight, 0, 0, 0x0);
   }
   
-  
-  if (config.aimbot.draw_fov == true && config.aimbot.master == true) {
+
+  // Aimbot fov
+  if (config.aimbot.draw_fov == true && config.aimbot.master == true && config.aimbot.fov < 90) {
     Vec2 screen_size = engine->get_screen_size();
 
     Player* localplayer = entity_list->get_localplayer();
@@ -87,8 +89,11 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
     surface->set_rgba(255, 255, 255, 255);
     surface->draw_circle(screen_size.x / 2, screen_size.y /2, radius, 55);
   }
-  
-      
+
+  // Navmesh debug visual
+  draw_navmesh();
+
+  // Entity and Player esp
   for (unsigned int i = 1; i <= entity_list->get_max_entities(); ++i) {
     if (config.esp.master == false) continue;
 

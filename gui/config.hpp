@@ -17,6 +17,13 @@ struct Aim {
   bool master = true;
 
   bool auto_shoot = true;
+
+  enum class TargetType {
+    FOV,
+    DISTANCE,
+    LEAST_HEALTH,
+    MOST_HEALTH
+  } target_type = TargetType::FOV;
   
   bool silent = true;
   
@@ -25,8 +32,10 @@ struct Aim {
   
   float fov = 45;
   bool draw_fov = false;
-
+  
   bool auto_scope = false;
+  bool auto_unscope = false;
+  bool scoped_only = false;
   
   bool ignore_friends = true;
 };
@@ -57,6 +66,11 @@ struct Esp {
     bool name = true;
   } pickup;
 
+  struct Intelligence {
+    bool box = true;    
+    bool name = true;
+  } intelligence;
+  
   struct Buildings {
     bool box = true;
     bool health_bar = true;    
@@ -86,15 +100,39 @@ struct Visuals {
 };
 
 struct Misc {
-  bool bhop = true;
-  bool bypasspure = true;
-  bool no_push = false;
+
+  struct Movement {
+    bool bhop = true;
+    bool no_push = false;
+  } movement;
+
+
+  struct Exploits {
+    bool bypasspure = true;
+    bool no_engine_sleep = false;
+  } exploits;
+};
+
+struct Navbot {
+  bool master = false;
+
+  bool walk = false;
+  
+  bool look_at_path = false;
+  float look_smoothness = 50;
+
+  bool do_objective = true;
 };
 
 struct Debug {
   int font_height = 14;
   int font_weight = 400;
   bool debug_render_all_entities = false;
+  bool debug_draw_navbot_path = false;
+  bool debug_draw_navmesh = false;
+  bool debug_draw_navbot_goal = false;
+  bool debug_draw_navbot_current_area = false;
+  bool debug_draw_navbot_next_area = false;
 };
 
 struct Config {
@@ -102,6 +140,7 @@ struct Config {
   Esp esp;
   Visuals visuals;
   Misc misc;
+  Navbot navbot;
   Debug debug;
 };
 

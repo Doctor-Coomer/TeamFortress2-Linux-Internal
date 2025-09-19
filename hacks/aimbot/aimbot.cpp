@@ -1,6 +1,6 @@
 #include "aimbot.hpp"
 
-#include <cmath>
+#include "../../math.hpp"
 
 #include "../../interfaces/client.hpp"
 #include "../../interfaces/entity_list.hpp"
@@ -11,6 +11,7 @@
 #include "../../gui/config.hpp"
 #include "../../classes/player.hpp"
 
+#include "../../entity_cache.hpp"
 #include "../../print.hpp"
 
 bool is_player_visible(Player* localplayer, Player* entity, int bone) {
@@ -31,40 +32,17 @@ bool is_player_visible(Player* localplayer, Player* entity, int bone) {
   return false;
 }
 
-void movement_fix(user_cmd* user_cmd, Vec3 original_view_angle, float original_forward_move, float original_side_move) {
-  float yaw_delta = user_cmd->view_angles.y - original_view_angle.y;
-  float original_yaw_correction = 0;
-  float current_yaw_correction = 0;
-
-  if (original_view_angle.y < 0.0f) {
-    original_yaw_correction = 360.0f + original_view_angle.y;
-  } else {
-    original_yaw_correction = original_view_angle.y;
-  }
-    
-  if (user_cmd->view_angles.y < 0.0f) {
-    current_yaw_correction = 360.0f + user_cmd->view_angles.y;
-  } else {
-    current_yaw_correction = user_cmd->view_angles.y;
-  }
-
-  if (current_yaw_correction < original_yaw_correction) {
-    yaw_delta = abs(current_yaw_correction - original_yaw_correction);
-  } else {
-    yaw_delta = 360.0f - abs(original_yaw_correction - current_yaw_correction);
-  }
-  yaw_delta = 360.0f - yaw_delta;
-
-  user_cmd->forwardmove = cos((yaw_delta) * (M_PI/180)) * original_forward_move + cos((yaw_delta + 90.f) * (M_PI/180)) * original_side_move;
-  user_cmd->sidemove = sin((yaw_delta) * (M_PI/180)) * original_forward_move + sin((yaw_delta + 90.f) * (M_PI/180)) * original_side_move;
-}
-
-void aimbot(user_cmd* user_cmd) {  
+void aimbot(user_cmd* user_cmd, Vec3 original_view_angles) {  
   if (config.aimbot.master == false) {
     target_player = nullptr;
     return;
   }
 
+  if (entity_cache[class_id::PLAYER].empty()) {
+    target_player = nullptr;
+    return;
+  }
+  
   Player* localplayer = entity_list->get_localplayer();
   if (localplayer->get_lifestate() != 1) {
     target_player = nullptr;
@@ -81,10 +59,6 @@ void aimbot(user_cmd* user_cmd) {
     target_player = nullptr;    
   }
   
-  Vec3 original_view_angle = user_cmd->view_angles;
-  float original_side_move = user_cmd->sidemove;
-  float original_forward_move = user_cmd->forwardmove;
-
   bool friendlyfire = false;
   static Convar* friendlyfirevar = convar_system->find_var("mp_friendlyfire");
   if (friendlyfirevar != nullptr) {
@@ -94,9 +68,13 @@ void aimbot(user_cmd* user_cmd) {
   }
 
   float smallest_fov_angle = __FLT_MAX__;
+  float smallest_distance  = __FLT_MAX__;
+  int   smallest_health    = INT_MAX;
+
+  int   largest_health = INT_MIN;
   
-  for (unsigned int i = 1; i <= entity_list->get_max_entities(); ++i) {
-    Player* player = entity_list->player_from_index(i);
+  for (unsigned int i = 0; i < entity_cache[class_id::PLAYER].size(); ++i) {
+    Player* player = (Player*)entity_cache[class_id::PLAYER].at(i);
     
     if (player == nullptr                                                        ||
 	player == localplayer                                                    ||
@@ -112,6 +90,7 @@ void aimbot(user_cmd* user_cmd) {
     int bone = player->get_tf_class() == CLASS_ENGINEER ? 5 : 2; // Aim at body by default
 
     // Aim for head
+    // if it does more damage
     if (localplayer->get_tf_class() == CLASS_SNIPER) {
       if (localplayer->is_scoped() && player->get_health() > 50)
 	bone = player->get_head_bone();
@@ -126,8 +105,8 @@ void aimbot(user_cmd* user_cmd) {
       
     float yaw_hyp = sqrt((diff.x * diff.x) + (diff.y * diff.y));
 
-    float pitch_angle = atan2(diff.z, yaw_hyp) * 180 / M_PI;
-    float yaw_angle = atan2(diff.y, diff.x) * 180 / M_PI;
+    float pitch_angle = atan2(diff.z, yaw_hyp) * radpi;
+    float yaw_angle = atan2(diff.y, diff.x) * radpi;
 
     Vec3 view_angles = {
       .x = -pitch_angle,
@@ -135,8 +114,8 @@ void aimbot(user_cmd* user_cmd) {
       .z = 0
     };
       
-    float x_diff = view_angles.x - original_view_angle.x;
-    float y_diff = view_angles.y - original_view_angle.y;
+    float x_diff = view_angles.x - original_view_angles.x;
+    float y_diff = view_angles.y - original_view_angles.y;
 
     float x = remainderf(x_diff, 360.0f);
     float y = remainderf(y_diff, 360.0f);
@@ -144,31 +123,60 @@ void aimbot(user_cmd* user_cmd) {
     float clamped_x = x > 89.0f ? 89.0f : x < -89.0f ? -89.0f : x;
     float clamped_y = y > 180.0f ? 180.0f : y < -180.0f ? -180.0f : y;
 
-    float fov = hypotf(clamped_x, clamped_y);
-
     bool visible = is_player_visible(localplayer, player, bone);
+
     
-    if (visible == true && fov <= config.aimbot.fov && fov < smallest_fov_angle) {
-      target_player = player;
-      smallest_fov_angle = fov;
+    float fov = hypotf(clamped_x, clamped_y);
+    float distance = distance_3d(localplayer->get_origin(), player->get_origin());
+    int   health = player->get_health();
+
+    if (config.aimbot.target_type == Aim::TargetType::FOV) {
+      if (visible == true && fov <= config.aimbot.fov && fov < smallest_fov_angle) {
+	target_player = player;
+	smallest_fov_angle = fov;
+      }
+    } else if (config.aimbot.target_type == Aim::TargetType::DISTANCE) {
+      if (visible == true && fov <= config.aimbot.fov && distance < smallest_distance) {
+	target_player = player;
+	smallest_fov_angle = fov;
+	smallest_distance = distance;
+      }
+    } else if (config.aimbot.target_type == Aim::TargetType::LEAST_HEALTH) {
+      if (visible == true && fov <= config.aimbot.fov && health < smallest_health) {
+	target_player = player;
+	smallest_fov_angle = fov;
+	smallest_health = health;
+      }
+    } else if (config.aimbot.target_type == Aim::TargetType::MOST_HEALTH) {
+      if (visible == true && fov <= config.aimbot.fov && health > largest_health) {
+	target_player = player;
+	smallest_fov_angle = fov;
+        largest_health = health;
+      }    
     }
     
     if (target_player == player && (fov > config.aimbot.fov || visible == false))
       target_player = nullptr;
 
-    
-    if (((is_button_down(config.aimbot.key) && config.aimbot.use_key) || !config.aimbot.use_key) && config.aimbot.auto_shoot == true && target_player == player && localplayer->can_shoot(target_player)) {
-      if (config.aimbot.auto_scope == true && localplayer->get_tf_class() == CLASS_SNIPER && !localplayer->is_scoped() && weapon->can_primary_attack())
-	user_cmd->buttons |= IN_ATTACK2;
+
+    bool scoped_only = ((config.aimbot.scoped_only == true && weapon->is_sniper_rifle() && localplayer->is_scoped()) || config.aimbot.scoped_only == false || !weapon->is_sniper_rifle());
+    bool use_key = ((is_button_down(config.aimbot.key) && config.aimbot.use_key == true) || config.aimbot.use_key == false);
+
+    if (use_key == true && config.aimbot.auto_shoot == true && target_player == player && localplayer->can_shoot(target_player)) {
       
-      user_cmd->buttons |= IN_ATTACK;
+      if (config.aimbot.auto_scope == true && localplayer->get_tf_class() == CLASS_SNIPER && !localplayer->is_scoped() && weapon->can_primary_attack() && localplayer->get_ground_entity() != nullptr)
+	user_cmd->buttons |= IN_ATTACK2;
+
+      if (!(user_cmd->buttons & IN_ATTACK2) && scoped_only == true)
+	user_cmd->buttons |= IN_ATTACK;
+    }
+
+    if (config.aimbot.auto_unscope == true && (localplayer->get_tickbase() * TICK_INTERVAL) - localplayer->get_fov_time() >= 1 && localplayer->get_tf_class() == CLASS_SNIPER && localplayer->is_scoped()) {
+      user_cmd->buttons |= IN_ATTACK2;
     }
     
-    
-    if (((is_button_down(config.aimbot.key) && config.aimbot.use_key) || !config.aimbot.use_key) && weapon->can_primary_attack() && target_player == player)
+    if (use_key == true && weapon->can_primary_attack() && scoped_only == true && target_player == player)
       user_cmd->view_angles = view_angles;
 
   }
-
-  movement_fix(user_cmd, original_view_angle, original_forward_move, original_side_move);
 }
