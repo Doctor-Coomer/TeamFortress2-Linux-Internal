@@ -14,6 +14,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: packages
-      run: ./packages/debian.sh
+      run: ./packages/packages.sh
     - name: build
       run: ./build.sh
