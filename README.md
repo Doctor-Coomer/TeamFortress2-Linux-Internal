@@ -59,10 +59,13 @@ Library loaded successfully at 0x12345678900. Use Ctrl+C to unload.
 * Bhop
 * sv_pure bypass
 
-![ESP](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/vncrpso6admntx6q4v.png)
-![MENU1](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/q9wdsiijg2tdtrrh3t.png)
-![MENU2](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/zgwnk99mk0b5wj181z.png)
-![MENU3](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/2jy35bke13e9pqo8r4.png)
+![ESP](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/v2a6lpb3ptrdkftd17.png)
+![MENU1](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/ugeypgx5pkunur84ij.png)
+![MENU2](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/nrsxdr0lzebtpvfptd.png)
+![MENU3](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/xt7xrw2e5opbvb0p7n.png)
+![MENU4](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/rofyn5qzedydfh69bh.png)
+![MENU5](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/nvj7733dasulmqankh.png)
+![MENU6](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/jaax53h7g1ayk13das.png)
 ![pickups](https://r2.e-z.host/bb3dfc85-7f7f-4dcb-8b0b-3a4af0aa57e4/6jhjaiseb021kvef5b.png)
 
 # I want to contribute!
@@ -83,4 +86,3 @@ If you contribute entirely new features and files, I will most likely sit down a
 * Add more game modes to navbot
 * Add roaming to navbot
 * Add building aimbot
-* 
