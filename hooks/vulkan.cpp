@@ -260,7 +260,7 @@ VkResult queue_present_hook(VkQueue queue, const VkPresentInfoKHR* present_info)
       init_info.Instance = vk_instance;
       init_info.PhysicalDevice = vk_physical_device;
       init_info.Device = vk_device;
-      init_info.ApiVersion = VK_API_VERSION_1_4;
+      //init_info.ApiVersion = VK_API_VERSION_1_4;
       init_info.QueueFamily = queue_family;
       init_info.Queue = graphicQueue;
       init_info.PipelineCache = vk_pipeline_cache;
