@@ -213,7 +213,7 @@ public:
   bool is_friend(void) {
     player_info pinfo;
     if (engine->get_player_info(this->get_index(), &pinfo) && pinfo.friends_id != 0 && pinfo.fakeplayer != true) { 
-      return friend_cache[this];
+      return friend_cache[pinfo.friends_id];
     }
 
     return false;
@@ -257,6 +257,10 @@ public:
     Vec3 (*get_shoot_pos_fn)(void*) = (Vec3 (*)(void*))vtable[303];
 
     return get_shoot_pos_fn(this);
+  }
+
+  Vec3 get_punch_angles(void) {
+    return *(Vec3*)(this + 0x74);
   }
 
   int get_tf_class(void) {

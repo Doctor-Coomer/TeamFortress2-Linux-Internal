@@ -10,7 +10,7 @@
 
 // These are populated in hooks/frame_stage_notify.cpp
 inline static std::unordered_map<enum class_id, std::vector<Entity*>> entity_cache;
-inline static std::unordered_map<Entity*, bool> friend_cache;
+inline static std::unordered_map<unsigned long, bool> friend_cache;
 
 struct PickupItem {
   Vec3 location;

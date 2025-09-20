@@ -21,6 +21,7 @@ enum ClientFrameStage {
 void (*frame_stage_notify_original)(void*, ClientFrameStage);
 
 static float last_time = 0.0;
+static unsigned int a = 0;
 
 void frame_stage_notify_hook(void* me, ClientFrameStage current_stage) {
   frame_stage_notify_original(me, current_stage);
@@ -33,11 +34,11 @@ void frame_stage_notify_hook(void* me, ClientFrameStage current_stage) {
   switch (current_stage) {
   case FRAME_NET_UPDATE_START:
     {
-
-      if (global_vars->curtime - last_time >= 5) {
-	friend_cache.clear();
-      }  
-
+      
+      if (global_vars->curtime - last_time >= 1) {
+        friend_cache.clear();
+      }
+      
       entity_cache.clear();
 
       break;
@@ -54,14 +55,14 @@ void frame_stage_notify_hook(void* me, ClientFrameStage current_stage) {
 	case class_id::PLAYER:
 	  {
 	    entity_cache[class_id::PLAYER].push_back(entity);
-	
-	    if (global_vars->curtime - last_time >= 5) {
+	    
+	    if (global_vars->curtime - last_time >= 1) {	
 	      player_info pinfo;
 	      if (engine->get_player_info(entity->get_index(), &pinfo) && pinfo.friends_id != 0) { 
-		friend_cache[entity] = steam_friends->is_friend(pinfo.friends_id);
+		friend_cache[pinfo.friends_id] = steam_friends->is_friend(pinfo.friends_id);
 	      }
 	    }
-	
+	    
 	    break;
 	  }
       
@@ -79,13 +80,14 @@ void frame_stage_notify_hook(void* me, ClientFrameStage current_stage) {
 
       }
 
+      if (global_vars->curtime - last_time >= 1) {
+	last_time = global_vars->curtime;
+      }
+      
       break;
     }
   }
   
   
-  if (global_vars->curtime - last_time >= 5) {
-    last_time = global_vars->curtime;
-  }
       
 }

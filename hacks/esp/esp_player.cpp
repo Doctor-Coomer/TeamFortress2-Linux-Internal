@@ -127,7 +127,7 @@ void esp_player(unsigned int i, Player* player) {
       friendlyfire = true;
     }
   }
-
+  
   Player* localplayer = entity_list->get_localplayer();  
   if (player == localplayer                                                                                      || // Ignore Local Player
       player->is_dormant()                                                                                       || // Ignore Dormat (TODO: Add fading effect to dormat players)
