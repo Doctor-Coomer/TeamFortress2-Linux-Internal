@@ -164,7 +164,7 @@ void aimbot(user_cmd* user_cmd, Vec3 original_view_angles) {
 
     if (use_key == true && config.aimbot.auto_shoot == true && target_player == player && localplayer->can_shoot(target_player)) {
       
-      if (config.aimbot.auto_scope == true && localplayer->get_tf_class() == CLASS_SNIPER && !localplayer->is_scoped() && weapon->can_primary_attack() && localplayer->get_ground_entity() != nullptr)
+      if (config.aimbot.auto_scope == true && localplayer->get_tf_class() == CLASS_SNIPER && weapon->is_sniper_rifle() && !localplayer->is_scoped() && weapon->can_primary_attack() && localplayer->get_ground_entity() != nullptr)
 	user_cmd->buttons |= IN_ATTACK2;
 
       if (!(user_cmd->buttons & IN_ATTACK2) && scoped_only == true)
@@ -176,7 +176,7 @@ void aimbot(user_cmd* user_cmd, Vec3 original_view_angles) {
     }
     
     if (use_key == true && weapon->can_primary_attack() && scoped_only == true && target_player == player)
-      user_cmd->view_angles = view_angles;
+      user_cmd->view_angles = (view_angles - localplayer->get_punch_angles());
 
   }
 }
