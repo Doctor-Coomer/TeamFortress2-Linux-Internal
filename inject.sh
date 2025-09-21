@@ -3,6 +3,10 @@
 LIB_PATH=$(pwd)/tf2.so
 PROCID=$(pgrep tf_linux64 | head -n 1)
 
+if [[ "$(execstack -q tf2.so)" = "X tf2.so" ]]; then
+    execstack -c tf2.so
+fi
+
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root"
     exit 1
@@ -35,8 +39,12 @@ LIB_HANDLE=$(sudo gdb -n --batch -ex "attach $PROCID" \
                   -ex "detach" 2> /dev/null | grep -oP '\$1 = \(void \*\) \K0x[0-9a-f]+'
 	  )
 
-if [ -z "$LIB_HANDLE" ]; then
-    echo "Failed to load library"
+if [ -z "$LIB_HANDLE" ] || [[ "$LIB_HANDLE" = "0x0" ]]; then
+    echo "Failed to load library at $LIB_HANDLE"
+    ERR=$(sudo gdb -n --batch -ex "attach $PROCID" \
+	       -ex "call ((char * (*) (void)) dlerror)()" \
+               -ex "detach" 2> /dev/null | grep '\$1')
+    echo "Result from dlerror: $ERR"
     exit 1
 fi
 

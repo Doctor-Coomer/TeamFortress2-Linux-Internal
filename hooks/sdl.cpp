@@ -21,7 +21,7 @@ bool poll_event_hook(SDL_Event* event) {
   bool ret = poll_event_original(event);
 
   
-  if (ret == true && sdl_window != nullptr)
+  if (ret == true && sdl_window != nullptr && ImGui::GetCurrentContext())
     ImGui_ImplSDL2_ProcessEvent(event);
   
   get_input(event);
@@ -81,7 +81,7 @@ void swap_window_hook(SDL_Window* window) {
   
   SDL_GL_MakeCurrent(window, new_context);
   
-  if (ImGui::IsKeyPressed(ImGuiKey_Insert, false)) {
+  if (ImGui::IsKeyPressed(ImGuiKey_Insert, false) || ImGui::IsKeyPressed(ImGuiKey_F11, false)) {
     menu_focused = !menu_focused;
     surface->set_cursor_visible(menu_focused);
   }

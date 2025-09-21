@@ -4,7 +4,7 @@ MAKEFLAGS := --jobs=$(shell nproc)
 
 CFLAGS= -shared -fPIC -g
 
-LDFLAGS= -l:libGLEW.so.2.1 -lSDL2 -lvulkan libs/funchook/build/libfunchook.a libs/funchook/build/libdistorm.a -g 
+LDFLAGS= -l:libGLEW.so.2.1 -lSDL2 -lvulkan libs/funchook/build/libfunchook.a libs/funchook/build/libdistorm.a -z execstack -g
 
 OBJ_FILES =  main.cpp.o # Unity build
 OBJ_FILES += libsigscan/libsigscan.c.o # Sigscan library
