@@ -194,9 +194,9 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
     }
   }
 
-  Area* new_target_area = mesh.find_nearest_area_2d(target_location);
-  if (new_target_area == nullptr)
-    new_target_area = mesh.best_area_from_xyz(target_location); // Less accurate fallback
+  Area* new_target_area = mesh.best_area_from_xyz(target_location);
+  //if (new_target_area == nullptr)
+  //  new_target_area = mesh.best_area_from_xyz(target_location); // Less accurate fallback
   
   // Create path to target location if we don't have one
   if (from_area != nullptr && new_target_area != nullptr && (path.goal_id == 0 || path.goal_id != new_target_area->id)) {  
