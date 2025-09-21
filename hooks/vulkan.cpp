@@ -305,18 +305,18 @@ VkResult queue_present_hook(VkQueue queue, const VkPresentInfoKHR* present_info)
 
     }
 
+    if (ImGui::IsKeyPressed(ImGuiKey_Insert, false) || ImGui::IsKeyPressed(ImGuiKey_F11, false)) {
+      menu_focused = !menu_focused;
+      surface->set_cursor_visible(menu_focused);
+    }
+
     /* Do our overlay drawing */
     ImGui_ImplVulkan_NewFrame( );
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame( );
 
     draw_players_imgui();
-    
-    if (ImGui::IsKeyPressed(ImGuiKey_Insert, false)) {
-      menu_focused = !menu_focused;
-      surface->set_cursor_visible(menu_focused);
-    }
-    
+        
     if (menu_focused) {
       draw_menu();
     }  

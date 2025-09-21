@@ -81,7 +81,7 @@ void swap_window_hook(SDL_Window* window) {
   
   SDL_GL_MakeCurrent(window, new_context);
   
-  if (ImGui::IsKeyPressed(ImGuiKey_Insert, false)) {
+  if (ImGui::IsKeyPressed(ImGuiKey_Insert, false) || ImGui::IsKeyPressed(ImGuiKey_F11, false)) {
     menu_focused = !menu_focused;
     surface->set_cursor_visible(menu_focused);
   }
