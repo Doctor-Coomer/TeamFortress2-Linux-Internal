@@ -28,13 +28,13 @@
 #include "interfaces/client_state.hpp"
 #include "interfaces/game_event_manager.hpp"
 
-#include "hooks/hooks.cpp"
 #include "libsigscan/libsigscan.h"
 #include "funchook/funchook.h"
 
 #include "hooks/sdl.cpp"
 #include "hooks/vulkan.cpp"
 
+#include "hooks/hooks.cpp"
 #include "hooks/client_mode_create_move.cpp"
 #include "hooks/client_create_move.cpp"
 #include "hooks/cl_move.cpp"
@@ -64,45 +64,115 @@ __attribute__((constructor))
 void entry() {  
   // Interfaces
   client = (Client*)get_interface("./tf/bin/linux64/client.so", "VClient017");
+  if (client == nullptr) {
+    print("VClient017 is missing\n");
+    return;
+  }
+  
   engine = (Engine*)get_interface("./bin/linux64/engine.so", "VEngineClient014");
+  if (engine == nullptr) {
+    print("VEngineClient014 is missing\n");
+    return;
+  }
   
   vgui = get_interface("./bin/linux64/vgui2.so", "VGUI_Panel009");
+  if (vgui == nullptr) {
+    print("VGUI_Panel009 is missing\n");
+    return;
+  }
+  
   surface = (Surface*)get_interface("./bin/linux64/vguimatsurface.so", "VGUI_Surface030");
-
+  if (surface == nullptr) {
+    print("VGUI_Surface030 is missing\n");
+    return;
+  }
+  
   unsigned long func_address = (unsigned long)sigscan_module("client.so", "48 8D 05 ? ? ? ? 48 8B 38 48 8B 07 FF 90 ? ? ? ? 48 8D 15 ? ? ? ? 84 C0");
   unsigned int input_eaddr = *(unsigned int*)(func_address + 0x3);
   unsigned long next_instruction = (unsigned long)(func_address + 0x7);
   input = (Input*)(*(void**)(next_instruction + input_eaddr));
+  if (input == nullptr) {
+    print("CInput is missing\n");
+    return;
+  }
   
   unsigned long check_stuck_address = (unsigned long)sigscan_module("client.so", "48 8D 05 ? ? ? ? 48 89 85 ? ? ? ? 74 ? 48 8B 38");
   unsigned int move_helper_eaddr = *(unsigned int*)(check_stuck_address + 0x3);
   unsigned long check_stuck_next_instruction = (unsigned long)(check_stuck_address + 0x7);
   move_helper = (MoveHelper*)(*(void**)(check_stuck_next_instruction + move_helper_eaddr));
-
+  if (move_helper == nullptr) {
+    print("CMoveHelper is missing\n");
+    return;
+  }
+  
   unsigned long rcon_addr_change_address = (unsigned long)sigscan_module("engine.so", "48 8D 05 ? ? ? ? 4C 8B 40");
   unsigned int client_state_eaddr = *(unsigned int*)(rcon_addr_change_address + 0x3);
   unsigned long rcon_addr_change_next_instruction = (unsigned long)(rcon_addr_change_address + 0x7);
   client_state = (ClientState*)((void*)(rcon_addr_change_next_instruction + client_state_eaddr));
+  if (client_state == nullptr) {
+    print("CClientState is missing\n");
+    return;
+  }
   
   prediction = (Prediction*)get_interface("./tf/bin/linux64/client.so", "VClientPrediction001");
-
+  if (prediction == nullptr) {
+    print("VClientPrediction001 is missing\n");
+    return;
+  }
+ 
   game_movement = (GameMovement*)get_interface("./tf/bin/linux64/client.so", "GameMovement001");
-  
+  if (game_movement == nullptr) {
+    print("GameMovement001 is missing\n");
+    return;
+  }
+ 
   overlay = (DebugOverlay*)get_interface("./bin/linux64/engine.so", "VDebugOverlay003");
-  
+  if (overlay == nullptr) {
+    print("VDebugOverlay003 is missing\n");
+    return;
+  }
+ 
   entity_list = (EntityList*)get_interface("./tf/bin/linux64/client.so", "VClientEntityList003");
-
+  if (entity_list == nullptr) {
+    print("VClientEntityList003 is missing\n");
+    return;
+  }
+ 
   render_view = (RenderView*)get_interface("./bin/linux64/engine.so", "VEngineRenderView014");
-
+  if (render_view == nullptr) {
+    print("VEngineRenderView014 is missing\n");
+    return;
+  }
+ 
   engine_trace = (EngineTrace*)get_interface("./bin/linux64/engine.so", "EngineTraceClient003");
-
+  if (engine_trace == nullptr) {
+    print("EngineTraceClient003 is missing\n");
+    return;
+  }
+ 
   model_render = (ModelRender*)get_interface("./bin/linux64/engine.so", "VEngineModel016");
+  if (model_render == nullptr) {
+    print("VEngineModel016 is missing\n");
+    return;
+  }
 
   material_system = (MaterialSystem*)get_interface("./bin/linux64/materialsystem.so", "VMaterialSystem082");
-
+  if (material_system == nullptr) {
+    print("VMaterialSystem082 is missing\n");
+    return;
+  }
+ 
   convar_system = (ConvarSystem*)get_interface("./bin/linux64/libvstdlib.so", "VEngineCvar004");
-
+  if (convar_system == nullptr) {
+    print("VEngineCvar004 is missing\n");
+    return;
+  }
+ 
   game_event_manager = (GameEventManager*)get_interface("./bin/linux64/engine.so", "GAMEEVENTSMANAGER002");
+  if (game_event_manager == nullptr) {
+    print("GAMEEVENTSMANAGER002 is missing\n");
+    return;
+  }
   {
     std::vector<const char*> events = {	"client_beginconnect", "client_connected", "client_disconnect", "game_newmap",
 					"teamplay_round_start", "scorestats_accumulated_update", "mvm_reset_stats",
@@ -120,9 +190,17 @@ void entry() {
   
   {
     steam_client = (SteamClient*)get_interface("../../../linux64/steamclient.so", "SteamClient020");
+    if (steam_client == nullptr) {
+      print("SteamClient020 is missing\n");
+      return;
+    }
     int steam_pipe = steam_client->create_steam_pipe();
     int steam_user = steam_client->connect_to_global_user(steam_pipe);
     steam_friends = (SteamFriends*)steam_client->get_steam_friends_interface(steam_user, steam_pipe, "SteamFriends017");
+    if (steam_friends == nullptr) {
+      print("SteamFriends017 is missing\n");
+      return;
+    }
   }
 
   client_vtable = *(void ***)client;
@@ -130,12 +208,20 @@ void entry() {
   __uint32_t client_mode_eaddr = *(__uint32_t *)((__uint64_t)(hud_process_input_addr) + 0x3);
   void* client_mode_next_instruction = (void *)((__uint64_t)(hud_process_input_addr) + 0x7);
   void* client_mode_interface = *(void **)((__uint64_t)(client_mode_next_instruction) + client_mode_eaddr);
+  if (client_mode_interface == nullptr) {
+    print("ClientModeShared is missing\n");
+    return;
+  }
   
   unsigned long hud_update = (unsigned long)client_vtable[11];
   unsigned int global_vars_eaddr = *(unsigned int *)(hud_update + 0x16);
   unsigned long global_vars_next_instruction = (unsigned long)(hud_update + 0x1A);
   global_vars = (GlobalVars*)(*(void **)(global_vars_next_instruction + global_vars_eaddr));
-
+  if (global_vars == nullptr) {
+    print("CGlobalVars is missing\n");
+    return;
+  }
+ 
   // VMT Function Hooks
   client_mode_vtable = *(void***)client_mode_interface;  
   client_mode_create_move_original = (bool (*)(void*, float, user_cmd*))client_mode_vtable[22];
@@ -220,30 +306,45 @@ void entry() {
   
   rv = funchook_prepare(funchook, (void**)&in_cond_original, (void*)in_cond_hook);
   if (rv != 0) {
+    print("Failed to prepare InCond hook\n");
+    return;
   }
 
   rv = funchook_prepare(funchook, (void**)&load_white_list_original, (void*)load_white_list_hook);
   if (rv != 0) {
+    print("Failed to prepare LoadWhiteList hook\n");
+    return;
   }
 
   rv = funchook_prepare(funchook, (void**)&cl_move_original, (void*)cl_move_hook);
   if (rv != 0) {
+    print("Failed to prepare CL_Move hook\n");
+    return;
   }  
 
   rv = funchook_prepare(funchook, (void**)&should_draw_local_player_original, (void*)should_draw_local_player_hook);
   if (rv != 0) {
+    print("Failed to prepare ShouldDrawLocalPlayer hook\n");
+    return;
   }  
 
   rv = funchook_prepare(funchook, (void**)&should_draw_this_player_original, (void*)should_draw_this_player_hook);
   if (rv != 0) {
+    print("Failed to prepare ShouldDrawThisPlayer hook\n");
+    return;
   }  
 
   rv = funchook_prepare(funchook, (void**)&draw_view_models_original, (void*)draw_view_models_hook);
   if (rv != 0) {
+    print("Failed to prepare DrawViewModels hook\n");
+    return;
   }  
 
   key_values_constructor_original = (KeyValues* (*)(void*, const char*))sigscan_module("client.so", "55 31 C0 66 0F EF C0 48 89 E5 53");
-
+  if (key_values_constructor_original == nullptr) {
+    print("Failed to find KeyValues() constructor\n");
+    return;
+  }
   
   // Hook Vulkan if present
   // Determine if we're in Vulkan mode
@@ -259,7 +360,7 @@ void entry() {
       // https://github.com/bruhmoment21/UniversalHookX/blob/main/UniversalHookX/src/hooks/backend/vulkan/hook_vulkan.cpp#L47
       VkInstanceCreateInfo create_info = {};
       constexpr const char* instance_extension = "VK_KHR_surface";
-
+      
       create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
       create_info.enabledExtensionCount = 1;
       create_info.ppEnabledExtensionNames = &instance_extension;
@@ -342,18 +443,26 @@ void entry() {
       // Hook the functions
       rv = funchook_prepare(funchook, (void**)&queue_present_original, (void*)queue_present_hook);
       if (rv != 0) {
+	print("Failed to prepare vkQueuePresentKHR hook\n");
+	return;
       }  
 
       rv = funchook_prepare(funchook, (void**)&acquire_next_image_original, (void*)acquire_next_image_hook);
       if (rv != 0) {
-      }  
+	print("Failed to prepare vkAcquireNextImageKHR hook\n");
+	return;
+      }
 
       rv = funchook_prepare(funchook, (void**)&acquire_next_image2_original, (void*)acquire_next_image2_hook);
       if (rv != 0) {
+	print("Failed to prepare vkAcquireNextImage2KHR hook\n");
+	return;
       }  
 
       rv = funchook_prepare(funchook, (void**)&create_swapchain_original, (void*)create_swapchain_hook);
       if (rv != 0) {
+	print("Failed to prepare vkCreateSwapchainKHR hook\n");
+	return;
       }  
 
       dlclose(lib_vulkan_handle);
