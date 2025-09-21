@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Setup the overlay that has execstack
 sudo eselect repository enable gentoo-zh
 sudo emaint -r gentoo-zh sync
