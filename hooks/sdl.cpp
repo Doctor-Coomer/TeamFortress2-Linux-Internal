@@ -21,7 +21,7 @@ bool poll_event_hook(SDL_Event* event) {
   bool ret = poll_event_original(event);
 
   
-  if (ret == true && sdl_window != nullptr)
+  if (ret == true && sdl_window != nullptr && ImGui::GetCurrentContext())
     ImGui_ImplSDL2_ProcessEvent(event);
   
   get_input(event);

@@ -250,7 +250,9 @@ void entry() {
   void* lib_dxvk_base_address = get_module_base_address("libdxvk_d3d9.so");
   if (lib_dxvk_base_address != nullptr) {  
     void* lib_vulkan_handle = dlopen("/run/host/usr/lib/libvulkan.so.1", RTLD_LAZY | RTLD_NOLOAD);
-  
+    if (lib_vulkan_handle == nullptr)
+      lib_vulkan_handle = dlopen("/run/host/usr/lib64/libvulkan.so.1", RTLD_LAZY | RTLD_NOLOAD); // Some distributions have a lib64 directory instead
+    
     if (lib_vulkan_handle != nullptr) {
       print("Vulkan loaded at %p\n", lib_vulkan_handle);
 
