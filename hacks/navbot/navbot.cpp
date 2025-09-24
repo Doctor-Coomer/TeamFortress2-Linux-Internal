@@ -742,7 +742,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
         float curr_z_samp = current_area->sample_z_at_xy(approach_pt.x, approach_pt.y);
         float next_z_samp = next_area->sample_z_at_xy(approach_pt.x, approach_pt.y);
         float step_height = next_z_samp - curr_z_samp;
-        bool need_step_jump = (step_height > (kStepHeight + 0.1f) && step_height <= (kJumpHeight + kZSlop));
+        bool need_step_jump = (step_height > (kStepHeight + 0.5f) && step_height <= (kJumpHeight + kZSlop));
         bool near_edge = d_edge <= edge_trigger_dist;
 
         if (!prevent_jump && can_jump && need_step_jump && near_edge && !cj_active && localplayer->get_ground_entity() && (ct_sd - last_jump_time) >= 0.2f) {
