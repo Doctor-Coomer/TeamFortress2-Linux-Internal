@@ -123,6 +123,7 @@ struct Navbot {
 
   bool do_objective = true;
   bool roaming = true;
+  bool snipe = true;
 
   struct Jobs {
     int objective_priority = 1;
