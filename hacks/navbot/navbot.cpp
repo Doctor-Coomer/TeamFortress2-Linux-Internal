@@ -303,7 +303,7 @@ namespace jobs {
   static JobResult pick(Player* localplayer, Area* from_area) {
     // choose by ascending priority (1 = highest)
     JobResult cap = capture(localplayer);
-  JobResult snp = snipe_enemies(localplayer);
+    JobResult snp = snipe_enemies(localplayer);
     JobResult rom = roam(localplayer, from_area);
 
     int pr_cap = config.navbot.jobs.objective_priority;
