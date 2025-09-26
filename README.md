@@ -1,3 +1,8 @@
+
+# IF YOU WANT OPEN PR FOR THIS FORK, DO THAT FOR BRANCH CALLED "AIMTYPES2"
+
+
+
 # What is this?
 This is a program that is compiled into a [Shared Object](https://en.wikipedia.org/wiki/Shared_library), and is used to give Extrasensory Perception, automate gameplay, and overall enhance the game through removing restrictions and adding extra features, for "Team Fortress 2". In a nutshell, this is a hack/cheat.  
   
