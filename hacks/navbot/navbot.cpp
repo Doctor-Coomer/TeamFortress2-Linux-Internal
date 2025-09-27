@@ -23,21 +23,21 @@
 
 #include "../../print.hpp"
 
-bool make_path(unsigned int area_start_id, unsigned int area_end_id);
+struct PathState {
+  static float CurTimeSeconds() { return global_vars ? global_vars->curtime : 0.0f; }
+  static void Clear() { path = Path{}; }
+  static void ResetCurrent() {
+    path.goal_id = 0;
+    path.path_ids.clear();
+    path.next_index = 0;
+  }
+};
 
-static inline float now() {
-  return global_vars ? global_vars->curtime : 0.0f;
+static inline float distance_2d(const Vec3& a, const Vec3& b) {
+  return std::sqrt(distance_squared_2d(a, b));
 }
 
-static inline void clear_path_state() {
-  path = Path{};
-}
-
-static inline void reset_current_path() {
-  path.goal_id = 0;
-  path.path_ids.clear();
-  path.next_index = 0;
-}
+static bool make_path(unsigned int area_start_id, unsigned int area_end_id);
 
 static bool areas_connected(Area* a, Area* b) {
   if (!a || !b) return false;
@@ -80,9 +80,9 @@ static Area* resolve_target_area_for(const Vec3& target_location) {
   return target_area;
 }
 
-static inline void maybe_finish_path_if_on_goal(Area* current_area) {
+static inline void FinishPathIfOnGoal(Area* current_area) {
   if (current_area && current_area->id == path.goal_id) {
-    reset_current_path();
+    PathState::ResetCurrent();
   }
 }
 
@@ -90,7 +90,7 @@ static inline bool advance_if_on_next_area(Area* current_area, Area*& next_area)
   if (current_area && next_area == current_area) {
     path.next_index++;
     if (path.next_index >= path.path_ids.size()) {
-      reset_current_path();
+      PathState::ResetCurrent();
       next_area = nullptr;
       return true; // finished
     }
@@ -99,7 +99,7 @@ static inline bool advance_if_on_next_area(Area* current_area, Area*& next_area)
   return false;
 }
 
-bool make_path(unsigned int area_start_id, unsigned int area_end_id) {
+static bool make_path(unsigned int area_start_id, unsigned int area_end_id) {
   path.path_ids.clear();
   path.next_index = 0;
   if (!area_start_id || !area_end_id || area_start_id == area_end_id) return false;
@@ -135,30 +135,19 @@ namespace jobs {
     Vec3 target;
   };
 
-  enum class game_mode { UNKNOWN, CTF, CP, PL, PLR, KOTH };
+  enum class GameMode { UNKNOWN, CTF, CP, PL, PLR, KOTH };
 
-  static const char* kind_to_str(Kind k) {
-    switch (k) {
-      case Kind::Capture: return "Capture";
-      case Kind::Snipe:   return "Snipe";
-      case Kind::Roam:    return "Roam";
-      default:            return "NoJob";
-    }
-  }
-
-  static game_mode determine_game_mode(const char* level_path) {
-    if (level_path == nullptr) return game_mode::UNKNOWN;
-    std::string p = std::string(level_path);
-    size_t slash = p.find_last_of('/');
-    if (slash != std::string::npos) p = p.substr(slash + 1);
-    size_t under = p.find('_');
-    if (under != std::string::npos) p.resize(under);
-    if (p == "ctf") return game_mode::CTF;
-    if (p == "cp")  return game_mode::CP;
-    if (p == "pl")  return game_mode::PL;
-    if (p == "plr") return game_mode::PLR;
-    if (p == "koth")return game_mode::KOTH;
-    return game_mode::UNKNOWN;
+  static GameMode determine_game_mode(const char* level_name) {
+    if (!level_name) return GameMode::UNKNOWN;
+    std::string_view name(level_name);
+    size_t under = name.find('_');
+    std::string_view mode = (under == std::string_view::npos) ? name : name.substr(0, under);
+    if (mode == "ctf")  return GameMode::CTF;
+    if (mode == "cp")   return GameMode::CP;
+    if (mode == "pl")   return GameMode::PL;
+    if (mode == "plr")  return GameMode::PLR;
+    if (mode == "koth") return GameMode::KOTH;
+    return GameMode::UNKNOWN;
   }
 
   static Vec3 ctf_target_location(Player* localplayer) {
@@ -169,7 +158,7 @@ namespace jobs {
     for (unsigned int i = 0; i < entity_cache[class_id::CAPTURE_FLAG].size(); ++i) {
       Entity* entity = entity_cache[class_id::CAPTURE_FLAG].at(i);
       if (entity == nullptr) continue;
-      auto* temp_flag = (CaptureFlag*)entity;
+  CaptureFlag* temp_flag = (CaptureFlag*)entity;
       if (entity->get_team() != localplayer->get_team()) {
         enemy_intelligence = temp_flag;
         continue;
@@ -237,9 +226,9 @@ namespace jobs {
     JobResult r{};
     if (!config.navbot.do_objective) return r;
     Vec3 target_location{};
-    switch (determine_game_mode(engine->get_level_name())) {
-      case game_mode::CTF:  target_location = ctf_target_location(localplayer);  break;
-      case game_mode::KOTH: target_location = koth_target_location(localplayer); break;
+  switch (determine_game_mode(engine->get_level_name())) {
+      case GameMode::CTF:  target_location = ctf_target_location(localplayer);  break;
+      case GameMode::KOTH: target_location = koth_target_location(localplayer); break;
       default: break;
     }
     if (target_location.x != 0 || target_location.y != 0 || target_location.z != 0) {
@@ -255,24 +244,28 @@ namespace jobs {
     JobResult r{};
     if (!config.navbot.snipe) return r;
 
+    const auto& players = entity_cache[class_id::PLAYER];
+    float best_d2 = std::numeric_limits<float>::max();
     Player* best = nullptr;
-    for (unsigned int idx = 1; idx <= 32; ++idx) {
-      Player* p = entity_list->player_from_index(idx);
-      if (!p || p == localplayer) continue;
+    Vec3 my_pos = localplayer->get_origin();
+    for (Entity* e : players) {
+      if (!e) continue;
+      Player* p = static_cast<Player*>(e);
+      if (p == localplayer) continue;
       if (p->get_team() == localplayer->get_team()) continue;
       if (p->get_lifestate() != 1) continue;
-      best = p;
-      break;
+      float d2 = distance_squared_2d(my_pos, p->get_origin());
+      if (d2 < best_d2) { best_d2 = d2; best = p; }
     }
     if (best) {
-      const float radius = 1000.0f;
+      const float radius = 1500.0f;
       float ct = global_vars ? global_vars->curtime : 0.0f;
-      float step_time = 1.0f;
-      float step_angle = 0.7f;
+      constexpr float step_time = 1.0f;
+      constexpr float step_angle = 0.7f;
       int step = (int)std::floor(ct / step_time);
       float angle = step * step_angle;
       Vec3 enemy = best->get_origin();
-      Vec3 offset = Vec3{ std::cos(angle) * radius, std::sin(angle) * radius, 0.0f };
+      Vec3 offset{ std::cos(angle) * radius, std::sin(angle) * radius, 0.0f };
       r.kind = Kind::Snipe;
       r.has_target = true;
       r.target = Vec3{ enemy.x + offset.x, enemy.y + offset.y, enemy.z };
@@ -335,18 +328,18 @@ namespace jobs {
 
 void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
   if (config.navbot.master == false) {
-    clear_path_state();
+  PathState::Clear();
     return;
   }
   
   Player* localplayer = entity_list->get_localplayer();
   if (localplayer == nullptr) {
-    clear_path_state();
+  PathState::Clear();
     return;
   }
   
   if (localplayer->get_lifestate() != 1) {
-    clear_path_state();
+  PathState::Clear();
     return;
   }
   
@@ -360,14 +353,22 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
   static jobs::Kind last_job_kind = jobs::Kind::NoJob;
   if (job.kind != last_job_kind) {
     if (config.debug.debug_draw_navbot_path) {
-      print("[navbot] job -> %s%s\n", jobs::kind_to_str(job.kind), job.has_target ? "" : " (no target)");
+      auto kind_str = [](jobs::Kind k) {
+        switch (k) {
+          case jobs::Kind::Capture: return "Capture";
+          case jobs::Kind::Snipe:   return "Snipe";
+          case jobs::Kind::Roam:    return "Roam";
+          default:                  return "NoJob";
+        }
+      };
+      print("[navbot] job -> %s%s\n", kind_str(job.kind), job.has_target ? "" : " (no target)");
     }
     last_job_kind = job.kind;
   }
 
   static uint32_t active_roam_goal_id = 0;
   static float last_snipe_retarget_time = 0.0f;
-  float ct_now = now();
+  float cur_time_sec = PathState::CurTimeSeconds();
 
   // shizophrenia fix
   if (job.kind == jobs::Kind::Roam) {
@@ -379,7 +380,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
   }
 
   if (job.kind == jobs::Kind::Snipe) {
-    if (path.goal_id != 0 && (ct_now - last_snipe_retarget_time) < 0.75f) {
+  if (path.goal_id != 0 && (cur_time_sec - last_snipe_retarget_time) < 0.75f) {
       job.has_target = false;
     }
   }
@@ -399,7 +400,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
         active_roam_goal_id = new_target_area->id;
       }
       if (job.kind == jobs::Kind::Snipe) {
-        last_snipe_retarget_time = ct_now;
+  last_snipe_retarget_time = cur_time_sec;
       }
     }
   }
@@ -420,7 +421,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
     static float last_crumb_check_time = 0.0f;
     const float crumb_stuck_threshold = 1.2f; // 1.2 seconds on same crumb = stuck
     
-    float ct_crumb = now();
+  float ct_crumb = PathState::CurTimeSeconds();
     if (ct_crumb - last_crumb_check_time > 0.1f) { // 100ms
       uint32_t current_crumb_id = path.next_index < path.path_ids.size() ? path.path_ids[path.next_index] : 0;
       if (current_crumb_id != 0) {
@@ -497,7 +498,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
       }
     }
     
-    maybe_finish_path_if_on_goal(current_area);
+  FinishPathIfOnGoal(current_area);
 
     advance_if_on_next_area(current_area, next_area);
 
@@ -510,7 +511,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
       if (found_idx < path.path_ids.size()) {
         path.next_index = (unsigned int)(found_idx + 1);
         if (path.next_index >= path.path_ids.size()) {
-          reset_current_path();
+          PathState::ResetCurrent();
         } else {
           next_area = mesh.id_to_area(path.path_ids[path.next_index]);
         }
@@ -520,8 +521,8 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
           Area* na = mesh.id_to_area(path.path_ids[path.next_index]);
           Area* nb = mesh.id_to_area(path.path_ids[path.next_index + 1]);
           if (!na || !nb) break;
-          float d_a = std::sqrt(distance_squared_2d(location, na->center()));
-          float d_b = std::sqrt(distance_squared_2d(location, nb->center()));
+          float d_a = distance_2d(location, na->center());
+          float d_b = distance_2d(location, nb->center());
           if (d_b + 24.0f < d_a) {
             path.next_index++;
             next_area = nb;
@@ -588,7 +589,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
         pending_progress_reset   = true;
       }
 
-      float ct_sd = now();
+  float ct_sd = PathState::CurTimeSeconds();
 
       // we did some progress, maybe not stuck?
       float dist_to_next_sd = std::sqrt(dist_squared);
@@ -737,7 +738,7 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
 
       if (next_area && current_area) {
         Vec3 approach_pt = current_area->closest_point_to_target(next_area->center());
-        float d_edge = std::sqrt(distance_squared_2d(location, approach_pt));
+        float d_edge = distance_2d(location, approach_pt);
         const float edge_trigger_dist = kHullWidth * 0.75f + 8.0f;
         float curr_z_samp = current_area->sample_z_at_xy(approach_pt.x, approach_pt.y);
         float next_z_samp = next_area->sample_z_at_xy(approach_pt.x, approach_pt.y);

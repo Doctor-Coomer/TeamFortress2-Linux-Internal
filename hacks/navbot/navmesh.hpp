@@ -117,18 +117,7 @@ struct Area {
     float min_y = std::min(this->nw[1], this->se[1]);
     float max_y = std::max(this->nw[1], this->se[1]);
 
-    // melody - make bounds smaller by half the player hull width to keep pathing away from walls/edges,
-    // "workaround" with NAVMESH isnt an solution, go edit pl_citadel navmesh lol
-    float margin = kHullWidth * 0.5f;
-    float min_x_i = min_x + margin;
-    float max_x_i = max_x - margin;
-    float min_y_i = min_y + margin;
-    float max_y_i = max_y - margin;
-
-    if (min_x_i > max_x_i) { min_x_i = (min_x + max_x) * 0.5f; max_x_i = min_x_i; }
-    if (min_y_i > max_y_i) { min_y_i = (min_y + max_y) * 0.5f; max_y_i = min_y_i; }
-
-    Vec3 pt{ clampf(target_xy.x, min_x_i, max_x_i), clampf(target_xy.y, min_y_i, max_y_i), 0.0f };
+    Vec3 pt{ clampf(target_xy.x, min_x, max_x), clampf(target_xy.y, min_y, max_y), 0.0f };
     pt.z = this->sample_z_at_xy(pt.x, pt.y);
     return pt;
   }

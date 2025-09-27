@@ -257,6 +257,15 @@ static void draw_navbot_tab() {
   ImGui::Text("General");
   ImGui::Checkbox("Walk Path", &config.navbot.walk);
 
+  ImGui::Checkbox("Roaming", &config.navbot.roaming);
+  ImGui::Checkbox("Snipe", &config.navbot.snipe);
+
+  ImGui::Separator();
+  ImGui::Text("Job Priorities");
+  ImGui::SliderInt("Objective Priority", &config.navbot.jobs.objective_priority, 1, 10);
+  ImGui::SliderInt("Snipe Priority", &config.navbot.jobs.snipe_priority, 1, 10);
+  ImGui::SliderInt("Roam Priority", &config.navbot.jobs.roam_priority, 1, 10);
+
   ImGui::NewLine();
 
   ImGui::Checkbox("Look At Path", &config.navbot.look_at_path);
