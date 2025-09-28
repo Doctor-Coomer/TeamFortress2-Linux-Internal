@@ -33,9 +33,6 @@ struct PathState {
   }
 };
 
-static inline float distance_2d(const Vec3& a, const Vec3& b) {
-  return std::sqrt(distance_squared_2d(a, b));
-}
 
 static bool make_path(unsigned int area_start_id, unsigned int area_end_id);
 

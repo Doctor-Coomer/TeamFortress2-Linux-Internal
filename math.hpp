@@ -21,6 +21,10 @@ inline static float distance_squared_2d(Vec3 location_one, Vec3 location_two) {
   return (location_one.x - location_two.x)*(location_one.x - location_two.x) + (location_one.y - location_two.y)*(location_one.y - location_two.y);
 }
 
+inline static float distance_2d(Vec3 a, Vec3 b) {
+  return std::sqrt(distance_squared_2d(a, b));
+}
+
 inline static float azimuth_to_signed(float yaw) {
   yaw = std::fmod(yaw, 360.0f);
   if (yaw > 180.0f) yaw -= 360.0f;
