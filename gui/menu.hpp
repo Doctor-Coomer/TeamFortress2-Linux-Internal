@@ -311,7 +311,7 @@ static void draw_tab(ImGuiStyle* style, const char* name, int* tab, int index) {
 
 static void draw_menu() {
   ImGui::SetNextWindowSize(ImVec2(600, 350));
-  if (ImGui::Begin("Team Fortress 2 GNU/Linux", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+  if (ImGui::Begin("Team Fortress 2 GNU+Linux", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
 
     
     ImGuiStyle* style = &ImGui::GetStyle();
