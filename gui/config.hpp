@@ -106,6 +106,10 @@ struct Misc {
     bool no_push = false;
   } movement;
 
+  struct Automatization {
+    bool autovaccinator = false;
+    bool autobackstab = false;
+  } automatization;
 
   struct Exploits {
     bool bypasspure = true;
