@@ -11,6 +11,8 @@
 
 #include "../hacks/aimbot/aimbot.cpp"
 #include "../hacks/bhop/bhop.cpp"
+#include "../hacks/autovaccinator/autovaccinator.cpp"
+#include "../hacks/autobackstab/autobackstab.cpp"
 #include "../hacks/navbot/parse_navmesh.cpp"
 #include "../hacks/navbot/navbot.cpp"
 #include "../hacks/engine_prediction/engine_prediction.cpp"
@@ -74,6 +76,9 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
 
   bhop(user_cmd);
 
+  autovaccinator(user_cmd);
+  autobackstab(user_cmd);
+  
   //start_engine_prediction(user_cmd); {
   aimbot(user_cmd, original_view_angles);
   movement_fix(user_cmd, original_view_angles, original_forward_move, original_side_move);

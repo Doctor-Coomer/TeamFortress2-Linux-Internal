@@ -14,6 +14,7 @@
 #include "../interfaces/engine.hpp"
 #include "../interfaces/surface.hpp"
 #include "../interfaces/entity_list.hpp"
+#include "../interfaces/netvars.hpp"
 
 #include "../classes/player.hpp"
  
@@ -30,6 +31,13 @@ const char* get_panel_name(void* panel) {
 
 
 void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t allow_force) {
+  static bool netvars_initialized_and_dumped = false;
+  if (!netvars_initialized_and_dumped) {
+    if (client && engine->is_in_game()) {
+      netvars::init(client);
+      netvars_initialized_and_dumped = true;
+    }
+  }
   std::string panel_name = get_panel_name(panel);
 
   // skip the original function to hide elements
