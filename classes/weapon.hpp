@@ -740,6 +740,15 @@ enum {
 
 class Weapon : Entity {
 public:
+  NETVAR(bool, is_ready_to_backstab, "DT_TFWeaponKnife", "m_bReadyToBackstab")
+  int get_charge_resist_type() {
+    return *(int*)((uintptr_t)this + 0x10C0);
+  }
+  
+  float get_charge_level() {
+    return *(float*)((uintptr_t)this + 0x10BC);
+  }
+
   short get_def_id(void) {
     return *(short*)(this+0xc30+0x90+0x44);
   }

@@ -3,6 +3,8 @@
 
 #include "../vec.hpp"
 
+class ClientClass;
+
 struct user_cmd {
   void *vmt;
   int command_number;
@@ -66,6 +68,11 @@ public:
 
     return local_view.fov;
   }
+  
+  ClientClass* get_all_classes(void) {
+    return vtable_fn<ClientClass* (*)(void*)>((void*)this, 8)(this);
+  }
+
 };
 
 inline static Client* client;

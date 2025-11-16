@@ -18,6 +18,7 @@ enum class_id {
   ARROW = 122,
   PLAYER = 247,
   ROCKET = 264,
+  SENTRY_ROCKET = 266,
   PILL_OR_STICKY = 217,
   FLARE = 257,
   CROSSBOW_BOLT = 259,
@@ -75,6 +76,53 @@ enum entity_flags {
 
 class Entity {
 public:  
+  float get_damage() {
+    // Netvar: DT_BaseGrenade->m_flDamage
+    return *(float*)((uintptr_t)this + 0xC24);
+  }
+
+  float get_splash_radius() {
+    // Netvar: DT_BaseGrenade->m_DmgRadius
+    return *(float*)((uintptr_t)this + 0xC14);
+  }
+  bool is_sticky_armed(void) {
+    return *(bool*)(this + 0xC55);
+  }
+  
+  Vec3 get_velocity(void) {
+    struct ClientClass {
+        void* m_pCreateFn; void* m_pCreateEventFn; const char* network_name;
+        void* m_pRecvTable; ClientClass* m_pNext; int m_ClassID;
+    };
+
+    ClientClass* client_class = (ClientClass*)this->get_client_class();
+    if (!client_class || !client_class->network_name) {
+      return {0.0f, 0.0f, 0.0f};
+    }
+    const char* class_name = client_class->network_name;
+
+    if (strcmp(class_name, "CTFProjectile_Rocket") == 0 || strcmp(class_name, "CTFProjectile_SentryRocket") == 0) {
+        // DT_TFBaseRocket->m_vInitialVelocity
+        return *(Vec3*)(this + 0xC10);
+    }
+
+    if (strcmp(class_name, "CTFGrenadePipebombProjectile") == 0 || strcmp(class_name, "CTFProjectile_Stickybomb") == 0) {
+        // DT_TFWeaponBaseGrenadeProj->m_vInitialVelocity
+        return *(Vec3*)(this + 0xC38);
+    }
+    
+    if (this->get_class_id() == 247) { 
+        // DT_LocalPlayerExclusive->m_vecVelocity
+        return *(Vec3*)(this + 0x168);
+    }
+
+    return {0.0f, 0.0f, 0.0f};
+  }
+  
+  bool is_crit_projectile() {
+        return *(bool*)((uintptr_t)this + 0x4C);
+  } 
+
   int get_owner_entity_handle(void) {
     return *(int*)(this + 0x754);
   }

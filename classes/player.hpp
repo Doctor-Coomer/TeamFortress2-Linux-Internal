@@ -1,6 +1,7 @@
 #ifndef PLAYER_HPP
 #define PLAYER_HPP
 
+#include "../interfaces/netvars.hpp"
 #include "../interfaces/steam_friends.hpp"
 #include "../interfaces/entity_list.hpp"
 #include "../interfaces/attribute_manager.hpp"
@@ -201,6 +202,37 @@ static bool (*in_cond_original)(void*, int);
 
 class Player : public Entity {
 public:
+  bool is_vaccinator_uber_active() {
+    return (in_cond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) ||
+      in_cond(TF_COND_MEDIGUN_UBER_BLAST_RESIST)  ||
+      in_cond(TF_COND_MEDIGUN_UBER_FIRE_RESIST));
+  }
+  
+  int get_neck_bone(void) {
+    switch (this->get_tf_class()) {
+    case CLASS_SCOUT:
+    case CLASS_PYRO:
+    case CLASS_SPY:
+    case CLASS_MEDIC:
+    case CLASS_HEAVYWEAPONS:
+    case CLASS_SNIPER:
+    case CLASS_SOLDIER:
+      return 5; // neck_0
+    case CLASS_DEMOMAN:
+      return 15; // neck_0
+    case CLASS_ENGINEER:
+      return 7; // neck_0
+    }
+    return 0;
+  }
+  
+  int get_healing_target_handle() {
+    return *(int*)((uintptr_t)this + 0x1098);
+  }
+  
+  Player* get_healing_target() {
+    return (Player*)entity_list->entity_from_handle(get_healing_target_handle());
+  }
 
   int get_weapon_handle(void) {
     return *(int*)(this + 0x11D0);
@@ -221,6 +253,10 @@ public:
 
   int get_health(void) {
     return *(int*)(this + 0xD4);
+  }
+
+  bool is_dead() {
+    return this->get_health() <= 0;
   }
 
   int get_max_health(void) {
@@ -261,6 +297,16 @@ public:
 
   Vec3 get_punch_angles(void) {
     return *(Vec3*)(this + 0x74);
+  }
+
+  Vec3 get_eye_angles() {
+    static int offset_x = 0x23EC;
+    static int offset_y = 0x23F0;
+
+    float pitch = *(float*)((uintptr_t)this + offset_x);
+    float yaw = *(float*)((uintptr_t)this + offset_y);
+
+    return Vec3{pitch, yaw, 0.0f};
   }
 
   int get_tf_class(void) {
