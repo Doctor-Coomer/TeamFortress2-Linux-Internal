@@ -74,7 +74,7 @@ Hello, I ([Dr_Coomer](https://github.com/Doctor-Coomer)) can be busy outside thi
 If you want to contribute, please keep these in mind:  
 - This project uses snake_case
 - This project uses a [Unity Build](https://en.wikipedia.org/wiki/Unity_build) paradigm
-- I attempt to prioritize straight forward and simple, yet robust, C++ code <!-- a link to a blog explaining my preferred style of "modern C++" should be added here -->
+- I attempt to roughly prioritize straight forward and simple, yet robust, C-Style C++ code <!-- a link to a blog explaining my preferred style of "modern C++" should be added here -->
 
 If you contribute entirely new features and files, I will most likely sit down and rewrite your entire pull request to fit with those points. That isn't a reason to not contribute, but that is a reason why your changes may take a while to add. All contributions are valuable.  
 
