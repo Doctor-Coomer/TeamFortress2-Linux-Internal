@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo xbps-install make cmake gcc vulkan-loader-devel SDL SDL2-devel wget glew-devel elfutils-devel libselinux libselinux-devel gdb
+sudo xbps-install -y make cmake gcc vulkan-loader-devel SDL SDL2-devel wget glew-devel elfutils-devel libselinux libselinux-devel gdb
 
 wget -P libs/ https://downloads.sourceforge.net/glew/glew-2.1.0.tgz
 cd libs/
