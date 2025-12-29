@@ -7,8 +7,12 @@ cd libs/
 tar xvf glew-2.1.0.tgz
 cd glew-2.1.0
 make -j$(nproc)
+sudo cp lib/libGLEW.so.2.1 /usr/lib/
+sudo cp lib/libGLEW.so.2.1.0 /usr/lib/
+
 
 cd ../../
+
 
 wget -P libs/ https://launchpadlibrarian.net/477189013/execstack_0.0.20131005-1.1_amd64.deb
 cd libs/
