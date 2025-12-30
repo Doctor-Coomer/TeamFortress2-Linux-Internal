@@ -1,3 +1,5 @@
+#include <cmath> 
+
 #ifndef VEC_HPP
 #define VEC_HPP
 
@@ -7,6 +9,23 @@ struct Vec2 {
 
 struct Vec3 {
   float x = 0.0, y = 0.0, z = 0.0;
+  
+  float length() const {
+    return sqrtf(x * x + y * y + z * z);
+  }
+
+  void normalize() {
+    float len = length();
+    if (len != 0.0f) {
+      x /= len;
+      y /= len;
+      z /= len;
+    }
+  }
+
+  float dot(const Vec3& other) const {
+    return x * other.x + y * other.y + z * other.z;
+  }
 
   Vec3 operator+(const Vec3 v) {
     return Vec3{x + v.x, y + v.y, z + v.z};
@@ -36,14 +55,20 @@ struct Vec3 {
     x += v; y += v; z += v; return *this;
   }
 
-  Vec3 operator-(const Vec3 v) {
-    return Vec3{x - v.x, y - v.y, z - v.z};
+  Vec3 operator-(const Vec3& v) const { 
+  return Vec3{x - v.x, y - v.y, z - v.z};
   }
 
   bool operator!=(const Vec3 v) {
     return (this->x != v.x && this->y != v.y && this->z != v.z);
   }
 };
+
+inline float dist_sqr(const Vec3& p1, const Vec3& p2) {
+    return (p1.x - p2.x) * (p1.x - p2.x) +
+           (p1.y - p2.y) * (p1.y - p2.y) +
+           (p1.z - p2.z) * (p1.z - p2.z);
+}
 
 struct __attribute__((aligned(16))) Vec3_aligned {
   float x = 0.0, y = 0.0, z = 0.0;
@@ -140,5 +165,11 @@ struct view_setup {
   bool        m_bViewToProjectionOverride;
   VMatrix     m_ViewToProjection;
 };
+
+template<typename T>
+inline T vtable_fn(void* base, int index) {
+  void** vtable = *(void***)base;
+  return (T)vtable[index];
+}
 
 #endif

@@ -229,7 +229,12 @@ static void draw_misc_tab() {
   
   ImGui::Text("Movement");
   ImGui::Checkbox("Bhop", &config.misc.movement.bhop);
-  ImGui::Checkbox("No Push", &config.misc.movement.no_push);  
+  ImGui::Checkbox("No Push", &config.misc.movement.no_push);
+
+  ImGui::NewLine();
+  ImGui::Text("Automatization");
+  ImGui::Checkbox("Autovaccinator", &config.misc.automatization.autovaccinator);
+  ImGui::Checkbox("Autobackstab", &config.misc.automatization.autobackstab);
 
   ImGui::NewLine();
 
