@@ -116,6 +116,7 @@ struct Area {
     float max_x = std::max(this->nw[0], this->se[0]);
     float min_y = std::min(this->nw[1], this->se[1]);
     float max_y = std::max(this->nw[1], this->se[1]);
+
     Vec3 pt{ clampf(target_xy.x, min_x, max_x), clampf(target_xy.y, min_y, max_y), 0.0f };
     pt.z = this->sample_z_at_xy(pt.x, pt.y);
     return pt;
