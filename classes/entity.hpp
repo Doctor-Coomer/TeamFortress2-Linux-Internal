@@ -10,7 +10,7 @@
 #include "../interfaces/entity_list.hpp"
 
 // https://github.com/rei-2/Amalgam/blob/c1c6bf64d739538b48a301ddc5e1a988cb9b479c/Amalgam/src/SDK/Definitions/Definitions.h#L1032
-enum class_id {
+enum class_id {  
   AMMO_OR_HEALTH_PACK = 1,
   DISPENSER = 86,
   SENTRY = 88,
@@ -23,18 +23,35 @@ enum class_id {
   CROSSBOW_BOLT = 259,
   SNIPER_DOT = 118,
   CAPTURE_FLAG = 26,
-  OBJECTIVE_RESOURCE = 235
+  OBJECTIVE_RESOURCE = 235,
+  WEARABLE_VM = 343,
+  WEARABLE = 336,
+  WEARABLE_ITEM = 339,
+  WEARABLE_ECON = 35,
+  WEARABLE_ROBOT_ARM = 342,
+  WEARABLE_RAZORBACK = 341,
+  WEARABLE_DEMO_SHIELD = 338,
+  WEARABLE_LEVELABLE_ITEM = 340,
+  WEARABLE_CAMPAIGN_ITEM = 337,
+  RESPAWN_ROOM_VISUALIZER = 64,
+  BASE_DOOR = 6,
+  BASE_PROP_DOOR = 15,
+  
+  // Negative values are reserved by the hack for entity_cache.hpp
+  // Entity::get_class_id() will not return any of these.
+  AMMO = -2,
+  HEALTH_PACK = -1,
 };
 
-enum tf_team {
-  TEAM_UNKNOWN = 0,
-  TEAM_SPECTATOR,
-  TEAM_RED,
-  TEAM_BLU
+enum class tf_team {
+  UNKNOWN = 0,
+  SPECTATOR,
+  RED,
+  BLU
 };
 
 enum pickup_type {
-  UNKNOWN,
+  UNKNOWN = 0,
   MEDKIT,
   AMMOPACK,
 };
@@ -72,6 +89,22 @@ enum entity_flags {
     FL_TRANSRAGDOLL = (1 << 29),
     FL_UNBLOCKABLE_BY_PLAYER = (1 << 30)
 };
+
+#define STUDIO_NONE 0x00000000
+#define STUDIO_RENDER 0x00000001
+#define STUDIO_VIEWXFORMATTACHMENTS 0x00000002
+#define STUDIO_DRAWTRANSLUCENTSUBMODELS 0x00000004
+#define STUDIO_TWOPASS 0x00000008
+#define STUDIO_STATIC_LIGHTING 0x00000010
+#define STUDIO_WIREFRAME 0x00000020
+#define STUDIO_ITEM_BLINK 0x00000040
+#define STUDIO_NOSHADOWS 0x00000080
+#define STUDIO_WIREFRAME_VCOLLIDE 0x00000100
+#define STUDIO_NO_OVERRIDE_FOR_ATTACH 0x00000200
+#define STUDIO_GENERATE_STATS 0x01000000
+#define STUDIO_SSAODEPTHTEXTURE 0x08000000
+#define STUDIO_SHADOWDEPTHTEXTURE 0x40000000
+#define STUDIO_TRANSPARENCY 0x80000000
 
 class Entity {
 public:  
@@ -121,6 +154,15 @@ public:
     return (const char*)*(unsigned long*)(base_class + 0x8);
   }
   
+  int draw_model(int flags) {
+    void* renderable = this->get_renderable();
+    void** vtable = *(void***)renderable;
+
+    int (*draw_model_fn)(void*, int) = (int (*)(void*, int))vtable[10];
+
+    return draw_model_fn(renderable, flags);
+  }
+  
   bool is_dormant(void) {
     void* networkable = get_networkable();
     void** vtable = *(void ***)networkable;
@@ -139,9 +181,9 @@ public:
     return get_client_class_fn(networkable);
   }
   
-  int get_class_id(void) {
+  class_id get_class_id(void) {
     void* client_class = get_client_class();
-    return *(int*)((unsigned long)(client_class) + 0x28);
+    return *(class_id*)((unsigned long)(client_class) + 0x28);
   }
 
   int get_tickbase(void) {
@@ -168,6 +210,21 @@ public:
     return false;
   }
 
+  bool is_wearable(void) {
+    switch (this->get_class_id()) {
+    case class_id::WEARABLE:
+    case class_id::WEARABLE_CAMPAIGN_ITEM:
+    case class_id::WEARABLE_DEMO_SHIELD:
+    case class_id::WEARABLE_ECON:
+    case class_id::WEARABLE_ITEM:
+    case class_id::WEARABLE_RAZORBACK:
+    case class_id::WEARABLE_VM:
+    case class_id::WEARABLE_LEVELABLE_ITEM:
+      return true;
+    }
+
+    return false;
+  }
   
   enum pickup_type get_pickup_type(void) {
     const char* model_name = get_model_name();
@@ -187,6 +244,14 @@ public:
     return pickup_type::UNKNOWN;
   }
 
+  bool is_base_combat_weapon(void) {
+    void** vtable = *(void***)this;
+
+    bool (*is_base_combat_weapon_fn)(void*) = (bool (*)(void*))vtable[138];
+
+    return is_base_combat_weapon_fn(this);
+  }
+  
 };
 
 #endif

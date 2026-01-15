@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: []
+  Add: [-std=c++23]

@@ -25,7 +25,7 @@ public:
   }
 
   bool can_team_capture(int index, enum tf_team team) {
-    int array_index = index + (team * MAX_CONTROL_POINTS);
+    int array_index = index + ((int)(team) * MAX_CONTROL_POINTS);
     return ((bool*)(this + 0xF74))[array_index];
   }
 

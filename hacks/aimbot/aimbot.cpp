@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "aimbot.hpp"
 
 #include "../../math.hpp"
@@ -21,11 +23,17 @@ bool is_player_visible(Player* localplayer, Player* entity, int bone) {
   struct ray_t ray = engine_trace->init_ray(&start_pos, &target_pos);
   struct trace_filter filter;
   engine_trace->init_trace_filter(&filter, localplayer);
+
+  struct trace_t trace_world;
+  engine_trace->trace_ray(&ray, MASK_SHOT | CONTENTS_GRATE, &filter, &trace_world);
+
+  wchar_t target_wname[32];
+  entity->get_player_name(target_wname);
+  char target_name[32];
+  std::wcstombs(target_name, target_wname, 32);
+  //print("Target: %s\n", target_name);
   
-  struct trace_t trace;
-  engine_trace->trace_ray(&ray, 0x4200400b, &filter, &trace);
-  
-  if (trace.entity == entity || trace.fraction > 0.97f) {
+  if (trace_world.entity == entity || trace_world.fraction > 0.97f /* magic number */) {
     return true;
   }
 
@@ -55,8 +63,14 @@ void aimbot(user_cmd* user_cmd, Vec3 original_view_angles) {
     return;    
   }
 
+  // Check if the target player is still even in the entity list
+  if (std::find(entity_cache[class_id::PLAYER].begin(), entity_cache[class_id::PLAYER].end(), target_player) == entity_cache[class_id::PLAYER].end()) {
+    target_player = nullptr;
+  }
+    
+    
   if (target_player != nullptr && target_player->is_friend() && config.aimbot.ignore_friends == true) {
-    target_player = nullptr;    
+    target_player = nullptr;
   }
   
   bool friendlyfire = false;
@@ -87,14 +101,14 @@ void aimbot(user_cmd* user_cmd, Vec3 original_view_angles) {
 	continue;
       }
     
-    int bone = player->get_tf_class() == CLASS_ENGINEER ? 5 : 2; // Aim at body by default
+    int bone = player->get_tf_class() == tf_class::ENGINEER ? 5 : 2; // Aim at body by default
 
     // Aim for head
     // if it does more damage
-    if (localplayer->get_tf_class() == CLASS_SNIPER) {
+    if (localplayer->get_tf_class() == tf_class::SNIPER) {
       if (localplayer->is_scoped() && player->get_health() > 50)
 	bone = player->get_head_bone();
-    } else if (localplayer->get_tf_class() == CLASS_SPY) {
+    } else if (localplayer->get_tf_class() == tf_class::SPY) {
       if (weapon->is_headshot_weapon())
 	bone = player->get_head_bone();
     }
@@ -164,14 +178,14 @@ void aimbot(user_cmd* user_cmd, Vec3 original_view_angles) {
 
     if (use_key == true && config.aimbot.auto_shoot == true && target_player == player && localplayer->can_shoot(target_player)) {
       
-      if (config.aimbot.auto_scope == true && localplayer->get_tf_class() == CLASS_SNIPER && weapon->is_sniper_rifle() && !localplayer->is_scoped() && weapon->can_primary_attack() && localplayer->get_ground_entity() != nullptr)
+      if (config.aimbot.auto_scope == true && localplayer->get_tf_class() == tf_class::SNIPER && weapon->is_sniper_rifle() && !localplayer->is_scoped() && weapon->can_primary_attack() && localplayer->get_ground_entity() != nullptr)
 	user_cmd->buttons |= IN_ATTACK2;
 
       if (!(user_cmd->buttons & IN_ATTACK2) && scoped_only == true)
 	user_cmd->buttons |= IN_ATTACK;
     }
 
-    if (config.aimbot.auto_unscope == true && (localplayer->get_tickbase() * TICK_INTERVAL) - localplayer->get_fov_time() >= 1 && localplayer->get_tf_class() == CLASS_SNIPER && localplayer->is_scoped()) {
+    if (config.aimbot.auto_unscope == true && (localplayer->get_tickbase() * TICK_INTERVAL) - localplayer->get_fov_time() >= 1 && localplayer->get_tf_class() == tf_class::SNIPER && localplayer->is_scoped()) {
       user_cmd->buttons |= IN_ATTACK2;
     }
     

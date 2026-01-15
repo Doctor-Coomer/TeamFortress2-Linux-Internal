@@ -13,7 +13,6 @@
 #include "../vec.hpp"
 #include "../print.hpp"
 
-
 struct user_cmd;
 
 #define	FL_ONGROUND (1<<0)
@@ -28,17 +27,17 @@ struct user_cmd;
 #define	FL_INWATER (1<<9)
 #define PLAYER_FLAG_BITS 32
 
-enum {
-  CLASS_UNDEFINED = 0,
-  CLASS_SCOUT,
-  CLASS_SNIPER,
-  CLASS_SOLDIER,
-  CLASS_DEMOMAN,
-  CLASS_MEDIC,
-  CLASS_HEAVYWEAPONS,
-  CLASS_PYRO,
-  CLASS_SPY,
-  CLASS_ENGINEER
+enum class tf_class {
+  UNDEFINED = 0,
+  SCOUT,
+  SNIPER,
+  SOLDIER,
+  DEMOMAN,
+  MEDIC,
+  HEAVYWEAPONS,
+  PYRO,
+  SPY,
+  ENGINEER
 };
 
 struct player_info {
@@ -53,7 +52,7 @@ struct player_info {
   unsigned char files_downloaded;
 };
 
-enum {
+enum tf_cond {
   TF_COND_INVALID                          = -1,
   TF_COND_AIMING                           = 0, // Sniper aiming, Heavy minigun.
   TF_COND_ZOOMED                           = 1,
@@ -235,6 +234,17 @@ public:
     return *(int*)(this + 0x15DC);
   }
 
+  
+  unsigned int get_player_name(wchar_t name[32]) {
+    player_info pinfo;
+    if (!engine->get_player_info(this->get_index(), &pinfo)) return 0;
+
+    size_t len = mbstowcs(name, pinfo.name, 32);
+    if (len == (size_t)-1) return 0;
+
+    return len;
+  }
+  
   void set_head_size(float size) {
     *(float*)(this + 0x39D8) = size;
   }
@@ -263,8 +273,8 @@ public:
     return *(Vec3*)(this + 0x74);
   }
 
-  int get_tf_class(void) {
-    return *(int*)(this + 0x1BA0);
+  enum tf_class get_tf_class(void) {
+    return (enum tf_class)*(int*)(this + 0x1BA0);
   }
   
   Vec3 get_bone_pos(int bone_num) {
@@ -280,18 +290,21 @@ public:
   
   int get_head_bone(void) {
     switch (this->get_tf_class()) {
-    case CLASS_SCOUT:
-    case CLASS_PYRO:
-    case CLASS_SPY:
-    case CLASS_MEDIC:
-    case CLASS_HEAVYWEAPONS:
-    case CLASS_SNIPER:
-    case CLASS_SOLDIER:
+    case tf_class::SCOUT:
+    case tf_class::PYRO:
+    case tf_class::SPY:
+    case tf_class::MEDIC:
+    case tf_class::HEAVYWEAPONS:
+    case tf_class::SNIPER:
+    case tf_class::SOLDIER:
       return 6;
-    case CLASS_DEMOMAN:
+    case tf_class::DEMOMAN:
       return 16;
-    case CLASS_ENGINEER:
+    case tf_class::ENGINEER:
       return 8;
+      
+    default:
+      return 0;
     }
 
     return 0;
@@ -325,7 +338,16 @@ public:
     return (void*)(this + 0x1E78);
   }
 
-  bool in_cond(int condition) {
+
+  float get_invisibility(void) {
+    return *(float*)(this + 0x178);
+  }
+
+  void set_invisibility(float value) {
+    *(float*)(this + 0x178) = value;
+  }
+  
+  bool in_cond(tf_cond condition) {
     return in_cond_original(get_shared(), condition);
   }
   
@@ -339,8 +361,8 @@ public:
 
   bool is_invulnerable(void) {
     if (this->in_cond(TF_COND_INVULNERABLE)                     ||
-	//this->in_cond(TF_COND_INVULNERABLE_USER_BUFF)           ||
-	this->in_cond(TF_COND_INVULNERABLE_WEARINGOFF)          ||
+	this->in_cond(TF_COND_INVULNERABLE_USER_BUFF)           ||
+	//this->in_cond(TF_COND_INVULNERABLE_WEARINGOFF)          ||
 	this->in_cond(TF_COND_INVULNERABLE_CARD_EFFECT)         ||
 	this->in_cond(TF_COND_INVULNERABLE_HIDE_UNLESS_DAMAGED) ||
 	this->in_cond(TF_COND_PHASE))
@@ -385,7 +407,7 @@ public:
     // Can we headshot? Is it advantageous to headshot?
     // If not, maybe it would be better to not shoot at all.
     if (weapon->is_headshot_weapon()) {
-      if (this->get_tf_class() == CLASS_SPY) {
+      if (this->get_tf_class() == tf_class::SPY) {
 	if (weapon->can_ambassador_headshot()) {
 	  return true;
 	} else {
@@ -393,7 +415,7 @@ public:
 	}
       }
 
-      if (this->get_tf_class() == CLASS_SNIPER) {
+      if (this->get_tf_class() == tf_class::SNIPER) {
 	if (this->is_scoped()) {
 	  float charge_time = (this->get_tickbase() * TICK_INTERVAL) - this->get_fov_time();
 	  if (target_player->get_health() <= 50 || charge_time >= 0.2f) {

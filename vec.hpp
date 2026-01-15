@@ -46,7 +46,7 @@ struct Vec3 {
 };
 
 struct __attribute__((aligned(16))) Vec3_aligned {
-  float x = 0.0, y = 0.0, z = 0.0;
+  float x = 0.0, y = 0.0, z = 0.0, w = 0.0;
 };
 
 struct RGBA {

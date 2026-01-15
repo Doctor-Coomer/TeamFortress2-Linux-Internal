@@ -33,8 +33,8 @@ void box_esp_entity(Vec3 screen, Entity* entity, Player* localplayer) {
     render_view->world_to_screen(&location_offset_bottom, &screen_offset_bottom);    
     
     RGBA color = {255, 255, 255, 255};
-    if (entity->get_team() == tf_team::TEAM_BLU) color = RGBA{0, 0, 255, 255};
-    if (entity->get_team() == tf_team::TEAM_RED) color = RGBA{255, 0, 0, 255};
+    if (entity->get_team() == tf_team::BLU) color = RGBA{0, 0, 255, 255};
+    if (entity->get_team() == tf_team::RED) color = RGBA{255, 0, 0, 255};
     draw_outline_rectangle(screen_offset_bottom, screen_offset_top, 1.75, color);
   }
   
@@ -206,8 +206,8 @@ void name_esp_entity(Vec3 screen, Entity* entity, Player* localplayer) {
     render_view->world_to_screen(&location_offset_bottom, &screen_offset_bottom);    
     
     RGBA color = {255, 255, 255, 255};
-    if (entity->get_team() == tf_team::TEAM_BLU) color = RGBA{0, 0, 255, 255};
-    if (entity->get_team() == tf_team::TEAM_RED) color = RGBA{255, 0, 0, 255};
+    if (entity->get_team() == tf_team::BLU) color = RGBA{0, 0, 255, 255};
+    if (entity->get_team() == tf_team::RED) color = RGBA{255, 0, 0, 255};
     surface->draw_set_text_color(color);
 
     surface->draw_set_text_pos(screen_offset_bottom.x - surface->get_string_width(esp_entity_font, L"FLAG")*0.5, screen_offset_bottom.y + 1);
@@ -264,7 +264,7 @@ void name_esp_entity(Vec3 screen, Entity* entity, Player* localplayer) {
 }
 
 void timer_esp_entity() {
-
+  
   for (unsigned int i = 0; i < pickup_item_cache.size(); ++i) {
     PickupItem pickup_item = pickup_item_cache[i];
     float time_delta = pickup_item.time - global_vars->curtime;

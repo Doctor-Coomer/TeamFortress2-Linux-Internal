@@ -3,7 +3,11 @@
 #include "../interfaces/entity_list.hpp"
 #include "../interfaces/convar_system.hpp"
 
+#include "../hacks/tickbase/tickbase.hpp"
+
 #include "../classes/player.hpp"
+
+#include "../imgui/dearimgui.hpp"
 
 #include "../gui/config.hpp"
 
@@ -14,7 +18,7 @@
 #include "../hacks/navbot/parse_navmesh.cpp"
 #include "../hacks/navbot/navbot.cpp"
 #include "../hacks/engine_prediction/engine_prediction.cpp"
-
+#include "../hacks/tickbase/tickbase.cpp"
 
 bool (*client_mode_create_move_original)(void*, float, user_cmd*);
 
@@ -70,7 +74,50 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
   Vec3 original_view_angles = user_cmd->view_angles;
   float original_side_move = user_cmd->sidemove;
   float original_forward_move = user_cmd->forwardmove;
+
+  /*
+  static float timer1 = 0;
+  if (timer1 == 0) {
+    timer1 = global_vars->curtime;
+  }
+
+  if (global_vars->curtime - timer1 >= 1 && config.misc.automation.auto_class_select == true && localplayer->get_tf_class() == tf_class::UNDEFINED) {
+    engine->client_cmd_unrestricted("team_ui_setup");
     
+    if (localplayer->get_team() == tf_team::UNKNOWN) {
+      engine->client_cmd_unrestricted("autoteam");
+    }
+    
+    switch (config.misc.automation.class_selected) {
+    case tf_class::UNDEFINED:
+      engine->client_cmd_unrestricted("joinclass sniper"); break; //TODO: Add random class selection
+    case tf_class::SCOUT:
+      engine->client_cmd_unrestricted("joinclass scout"); break;
+    case tf_class::SOLDIER:
+      engine->client_cmd_unrestricted("joinclass soldier"); break;
+    case tf_class::PYRO:
+      engine->client_cmd_unrestricted("joinclass pyro"); break;
+    case tf_class::DEMOMAN:
+      engine->client_cmd_unrestricted("joinclass demoman"); break;
+    case tf_class::HEAVYWEAPONS:
+      engine->client_cmd_unrestricted("joinclass heavyweapons"); break;
+    case tf_class::ENGINEER:
+      engine->client_cmd_unrestricted("joinclass engineer"); break;
+    case tf_class::MEDIC:
+      engine->client_cmd_unrestricted("joinclass medic"); break;
+    case tf_class::SNIPER:
+      engine->client_cmd_unrestricted("joinclass sniper"); break;
+    case tf_class::SPY:
+      engine->client_cmd_unrestricted("joinclass spy"); break;
+    }
+  }
+
+
+  if (global_vars->curtime - timer1 >= 1) {
+    timer1 = global_vars->curtime;
+  }
+  */
+
 
   bhop(user_cmd);
 
@@ -80,6 +127,14 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
   //}
   //end_engine_prediction();
 
+  /*
+  print("ClientModeShared: %d\n", shifted_ticks);
+  
+  if (send_packet != nullptr)
+    print("%d\n", *send_packet);
+  */
+
+  choke_current_tick();
   
   //No Push
   static Convar* nopush = convar_system->find_var("tf_avoidteammates_pushaway");
@@ -103,6 +158,11 @@ bool client_mode_create_move_hook(void* me, float sample_time, user_cmd* user_cm
     if (engine_no_focus_sleep->get_int() == 0) {
       engine_no_focus_sleep->set_int(50);
     }
+  }
+
+  if (ImGui::IsImGuiFullyInitialized() && ImGui::IsAnyItemActive() == true && ImGui::IsMouseDown(ImGuiMouseButton_Left) != true) {
+    user_cmd->sidemove = 0.0;
+    user_cmd->forwardmove = 0.0;
   }
   
   parse_navmesh(engine->get_level_name());

@@ -1,6 +1,7 @@
 #include "../vec.hpp"
 
 #include "../interfaces/entity_list.hpp"
+#include "../interfaces/convar_system.hpp"
 
 #include "../gui/config.hpp"
 
@@ -22,6 +23,11 @@ void override_view_hook(void* me, view_setup* setup) {
     if (config.visuals.override_fov == true && localplayer->is_scoped() == false)
       setup->fov = config.visuals.custom_fov;
   }
-
+  
+  static Convar* viewmodel_fov = convar_system->find_var("viewmodel_fov");
+  if (viewmodel_fov != nullptr && config.visuals.override_viewmodel_fov == true) {
+    viewmodel_fov->set_float(config.visuals.custom_viewmodel_fov);
+  }
+  
   thirdperson(setup);
 }

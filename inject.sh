@@ -39,7 +39,12 @@ LIB_HANDLE=$(sudo gdb -n --batch -ex "attach $PROCID" \
                   -ex "detach" 2> /dev/null | grep -oP '\$1 = \(void \*\) \K0x[0-9a-f]+'
 	  )
 
-if [ -z "$LIB_HANDLE" ] || [[ "$LIB_HANDLE" = "0x0" ]]; then
+if [ -z "$LIB_HANDLE" ]; then
+    echo "Failed to load library"
+    exit 1
+fi
+
+if [[ "$LIB_HANDLE" = "0x0" ]]; then
     echo "Failed to load library at $LIB_HANDLE"
     ERR=$(sudo gdb -n --batch -ex "attach $PROCID" \
 	       -ex "call ((char * (*) (void)) dlerror)()" \

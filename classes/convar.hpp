@@ -11,6 +11,14 @@ public:
     return *(int*)(this + 0x58);
   }
 
+  void set_float(float value) {
+    *(float*)(this + 0x54) = value;
+  }
+
+  float get_float(float value) {
+    return *(float*)(this + 0x54);
+  }
+
 };
 
 #endif

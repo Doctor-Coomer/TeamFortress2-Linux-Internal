@@ -1,6 +1,8 @@
 #ifndef MATERIAL_SYSTEM_HPP
 #define MATERIAL_SYSTEM_HPP
 
+#include "render_context.hpp"
+
 #include "../classes/material.hpp"
 #include "../classes/keyvalues.hpp"
 
@@ -18,10 +20,20 @@ public:
   Material* create_material(const char* name, KeyValues* key_value) {
     void** vtable = *(void ***)this;
 
-    Material* (*create_material_fn)(void*, const char*, void*) = (Material* (*)(void*, const char*, void*))vtable[72];
+    Material* (*create_material_fn)(void*, const char*, void*) = (Material* (*)(void*, const char*, void*))vtable[70];
 
     return create_material_fn(this, name, key_value);
   }
+
+
+  RenderContext* get_render_context(void) {
+    void** vtable = *(void***)this;
+
+    RenderContext* (*get_render_context_fn)(void*) = (RenderContext* (*)(void*))vtable[98];
+
+    return get_render_context_fn(this);
+  }
+  
 };
 
 inline static MaterialSystem* material_system;

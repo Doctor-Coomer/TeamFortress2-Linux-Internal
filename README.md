@@ -1,6 +1,6 @@
 # What is this?
 This is a program that is compiled into a [Shared Object](https://en.wikipedia.org/wiki/Shared_library), and is used to give Extrasensory Perception, automate gameplay, and overall enhance the game through removing restrictions and adding extra features, for "Team Fortress 2". In a nutshell, this is a hack/cheat.  
-  
+
 Development is intermittent, as there is currently only one person (me) with push and merge rights (a Project Maintainer) at this time. Please read the [I want to contribute!](#-i-want-to-contribute!) section for more detail.
   
 Also, this project started as an unfaithful port of [this internal hack](https://github.com/faluthe/tf_c) to C++, but has far surpassed the goal of "just a port".  
@@ -86,3 +86,4 @@ If you contribute entirely new features and files, I will most likely sit down a
 * Add more game modes to navbot
 * Add roaming to navbot
 * Add building aimbot
+* Rebuild CL_Move

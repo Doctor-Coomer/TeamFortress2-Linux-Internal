@@ -31,4 +31,5 @@ Steps to reproduce the behavior:
 ## Checklist  
 - [ ] I have included my OS and DE or WM.
 - [ ] I have included the steps to reproduce and my logs to the best I am able to share.
-- [ ] The Developers are allowed to contact me on Discord for further information if they need it. (Put your username here)
+- [ ] The Developers are allowed to contact me on Discord/Telegram/Revolt/etc. for further information if they need it. (Put your username and platform here)
+  

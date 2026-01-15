@@ -172,8 +172,10 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
   
   Vec3 location = localplayer->get_origin();
   Vec3 target_location;
-
+  
   Area* from_area = mesh.best_area_from_xyz(location);
+  if (from_area == nullptr)
+    from_area = mesh.find_nearest_area_2d(target_location); // Less accurate fallback
   
   // Determine a target world origin. Depending on game mode.
   switch (determine_game_mode(engine->get_level_name())) {
@@ -193,20 +195,20 @@ void navbot(user_cmd* user_cmd, Vec3 original_view_angles) {
 	target_location = to_area->center();
     }
   }
-
+  
   Area* new_target_area = mesh.best_area_from_xyz(target_location);
-  //if (new_target_area == nullptr)
-  //  new_target_area = mesh.best_area_from_xyz(target_location); // Less accurate fallback
+  if (new_target_area == nullptr)
+    new_target_area = mesh.find_nearest_area_2d(target_location); // Less accurate fallback
   
   // Create path to target location if we don't have one
-  if (from_area != nullptr && new_target_area != nullptr && (path.goal_id == 0 || path.goal_id != new_target_area->id)) {  
-    if(make_path(from_area->id, new_target_area->id)) {
+  if (from_area != nullptr && new_target_area != nullptr && (path.goal_id == 0 || path.goal_id != new_target_area->id)) {    
+    if(make_path(from_area->id, new_target_area->id)) {  
       path.goal_id = new_target_area->id;
     }
   }
   
   // Follow path to target location
-  if (path.goal_id > 0 && !path.path_ids.empty()) {
+  if (path.goal_id > 0 && !path.path_ids.empty()) {  
     Area* current_area = mesh.best_area_from_xyz(location);
     Area* next_area = mesh.id_to_area(path.path_ids[path.next_index]);
     

@@ -13,6 +13,10 @@
 static ImGuiStyle orig_style; // Defined in /hooks/sdl.cpp swap_window_hook
 
 namespace ImGui {
+  static bool IsImGuiFullyInitialized(void) {
+    return (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().BackendPlatformUserData != nullptr);
+  }
+
   static void TextCentered(std::string text) {
     auto windowWidth = ImGui::GetWindowSize().x;
     auto textWidth   = ImGui::CalcTextSize(text.c_str()).x;
@@ -28,8 +32,12 @@ namespace ImGui {
     ImGui::PopStyleVar(1);
   }
 
-  
-  
+  static void SliderIntHeightAndLengthPad(const char* label, int* v, int v_min, int v_max, int width, int height, const char* format = "%d", ImGuiSliderFlags flags = 0) {
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(width, height));
+    ImGui::SliderInt(label, v, v_min, v_max, format, flags);
+    ImGui::PopStyleVar(1);
+  }
+
   static std::string GetKeyName(SDL_Scancode key) {
     if (key >= 0) {
       const char* name = SDL_GetKeyName(SDL_GetKeyFromScancode(key));

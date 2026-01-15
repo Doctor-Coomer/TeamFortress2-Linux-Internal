@@ -17,10 +17,35 @@ enum types_t {
 
 class KeyValues;
 static KeyValues* (*key_values_constructor_original)(void*, const char*);
+static void (*key_values_set_int_original)(void*, const char*, int);
+static bool (*key_values_load_from_buffer_original)(void*, const char*, const char*, void*, const char*);
+
+void key_values_set_int_hook(void* me, const char* key, int value) {
+
+  /*
+  if (strstr(key, "class")) {
+    value = 3;
+    }*/
+  
+  key_values_set_int_original(me, key, value);
+}
 
 class KeyValues {
+public:
   KeyValues(const char* name) {
     key_values_constructor_original(this, name);
+  }
+
+  KeyValues() {
+    
+  }
+
+  void set_int(const char* key_name, int value) {
+    key_values_set_int_original(this, key_name, value);
+  }
+
+  bool load_from_buffer(const char* resource_name, const char* buffer) {
+    return key_values_load_from_buffer_original(this, resource_name, buffer, nullptr, nullptr);
   }
   
   

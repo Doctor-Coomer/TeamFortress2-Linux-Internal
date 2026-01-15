@@ -30,5 +30,4 @@ void bhop(user_cmd* user_cmd) {
   }
   
   last_attempted = user_cmd->buttons & IN_JUMP;
-
 }

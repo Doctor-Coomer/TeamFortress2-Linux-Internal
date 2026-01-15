@@ -5,6 +5,8 @@
 
 #include "../entity_cache.hpp"
 
+#include "../gui/config.hpp"
+
 #include "../print.hpp"
 
 enum ClientFrameStage {
@@ -56,7 +58,7 @@ void frame_stage_notify_hook(void* me, ClientFrameStage current_stage) {
 	  {
 	    entity_cache[class_id::PLAYER].push_back(entity);
 	    
-	    if (global_vars->curtime - last_time >= 1) {	
+	    if (config.debug.disable_friend_checks == false && global_vars->curtime - last_time >= 1) {	
 	      player_info pinfo;
 	      if (engine->get_player_info(entity->get_index(), &pinfo) && pinfo.friends_id != 0) { 
 		friend_cache[pinfo.friends_id] = steam_friends->is_friend(pinfo.friends_id);
@@ -65,7 +67,17 @@ void frame_stage_notify_hook(void* me, ClientFrameStage current_stage) {
 	    
 	    break;
 	  }
-      
+
+	case class_id::AMMO_OR_HEALTH_PACK:
+	  {
+	    if (entity->get_pickup_type() == pickup_type::AMMOPACK)
+	      entity_cache[class_id::AMMO].push_back(entity);
+	    else if (entity->get_pickup_type() == pickup_type::MEDKIT)
+	      entity_cache[class_id::HEALTH_PACK].push_back(entity);
+
+	    break;
+	  }
+	  
 	case class_id::CAPTURE_FLAG:
 	  entity_cache[class_id::CAPTURE_FLAG].push_back(entity); break;
 

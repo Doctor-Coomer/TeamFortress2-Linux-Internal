@@ -12,6 +12,7 @@
 #include "../print.hpp"
 
 #include "../gui/menu.hpp"
+#include "../gui/indicators.hpp"
 
 static VkDevice vk_device;
 static VkAllocationCallbacks* vk_allocator = NULL;
@@ -243,9 +244,6 @@ VkResult queue_present_hook(VkQueue queue, const VkPresentInfoKHR* present_info)
       info.framebuffer = fd->Framebuffer;
       if (vk_image_extent.width == 0 || vk_image_extent.height == 0) {
 	Vec2 resolution = engine->get_screen_size();
-
-	// We don't know the window size the first time. So we just set it to 4K.
-
 	info.renderArea.extent.width = resolution.x;
 	info.renderArea.extent.height = resolution.y;
       } else {
@@ -279,30 +277,9 @@ VkResult queue_present_hook(VkQueue queue, const VkPresentInfoKHR* present_info)
       
       ImGui_ImplVulkan_Init(&init_info);
 
-      ImGuiStyle* style = &ImGui::GetStyle();
+      orig_style = ImGui::GetStyle();
 
-      style->Colors[ImGuiCol_WindowBg]         = ImVec4(0.1, 0.1, 0.1, 1);
-
-      style->Colors[ImGuiCol_TitleBgActive]    = ImVec4(0.05, 0.05, 0.05, 1);
-      style->Colors[ImGuiCol_TitleBg]          = ImVec4(0.05, 0.05, 0.05, 1);
-
-      style->Colors[ImGuiCol_CheckMark]        = ImVec4(0.869346734, 0.450980392, 0.211764706, 1);
-
-      style->Colors[ImGuiCol_FrameBg]          = ImVec4(0.15, 0.15, 0.15, 1);
-      style->Colors[ImGuiCol_FrameBgHovered]   = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-      style->Colors[ImGuiCol_FrameBgActive]    = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-
-      style->Colors[ImGuiCol_ButtonHovered]    = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-      style->Colors[ImGuiCol_ButtonActive]     = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-
-      style->Colors[ImGuiCol_SliderGrab]       = ImVec4(0.869346734, 0.450980392, 0.211764706, 1);
-      style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.899346734, 0.480980392, 0.241764706, 1);
-      style->GrabMinSize = 2;
-
-      style->Colors[ImGuiCol_Header]           = ImVec4(0.18, 0.18, 0.18, 1);
-      style->Colors[ImGuiCol_HeaderHovered]    = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-      style->Colors[ImGuiCol_HeaderActive]     = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-
+      set_imgui_theme();
     }
 
     if (ImGui::IsKeyPressed(ImGuiKey_Insert, false) || ImGui::IsKeyPressed(ImGuiKey_F11, false)) {
@@ -311,18 +288,20 @@ VkResult queue_present_hook(VkQueue queue, const VkPresentInfoKHR* present_info)
     }
 
     /* Do our overlay drawing */
-    ImGui_ImplVulkan_NewFrame( );
+    ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame( );
+    ImGui::NewFrame();
 
     draw_players_imgui();
-        
-    if (menu_focused) {
+            
+    draw_watermark();
+
+    draw_tickbase_indicator();
+    
+    if (menu_focused == true) {
       draw_menu();
     }  
 
-    draw_watermark();
-    
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), fd->CommandBuffer);
     /* End of our overlay drawing */

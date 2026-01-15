@@ -17,7 +17,7 @@
 
 #include "../classes/player.hpp"
  
-void (*paint_traverse_original)(void*, void*, __int8_t, __int8_t) = NULL;
+void (*paint_traverse_original)(void*, void*, bool, bool) = NULL;
 
 void* vgui;
 const char* get_panel_name(void* panel) {
@@ -29,7 +29,7 @@ const char* get_panel_name(void* panel) {
 }
 
 
-void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t allow_force) {
+void paint_traverse_hook(void* me, void* panel, bool force_repaint, bool allow_force) {
   std::string panel_name = get_panel_name(panel);
 
   // skip the original function to hide elements
@@ -37,6 +37,15 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
     return;
   }
 
+
+  /*
+  if (panel_name == "ClassMenuSelect" ) {
+    
+    surface->set_cursor_visible(false);
+    return;
+  }
+  */
+  
   paint_traverse_original(me, panel, force_repaint, allow_force);
 
   //print("%s\n", panel_name.c_str());
@@ -48,6 +57,8 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
   if (!engine->is_in_game()) {
     return;
   }
+
+  Vec2 screen_size = engine->get_screen_size();
 
   static int old_font_height = config.debug.font_height;
   static int old_font_weight = config.debug.font_weight;
@@ -67,8 +78,6 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
 
   // Aimbot fov
   if (config.aimbot.draw_fov == true && config.aimbot.master == true && config.aimbot.fov < 90) {
-    Vec2 screen_size = engine->get_screen_size();
-
     Player* localplayer = entity_list->get_localplayer();
 
     //very poor practice.
@@ -92,7 +101,7 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
 
   // Navmesh debug visual
   draw_navmesh();
-
+  
   // Entity and Player esp
   for (unsigned int i = 1; i <= entity_list->get_max_entities(); ++i) {
     if (config.esp.master == false) continue;
@@ -108,4 +117,5 @@ void paint_traverse_hook(void* me, void* panel, __int8_t force_repaint, __int8_t
       esp_entity(i, player->to_entity());
     }
   }
+
 }

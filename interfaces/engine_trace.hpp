@@ -3,6 +3,8 @@
 
 #include "../vec.hpp"
 
+#include "../classes/entity.hpp"
+
 enum trace_type_t {
   TRACE_EVERYTHING = 0,
   TRACE_WORLD_ONLY,
@@ -115,24 +117,44 @@ struct trace_t {
 #define CONTENTS_HITBOX			0x40000000	// use accurate hitboxes on trace
 #define CONTENTS_NOSTARTSOLID	0x80000000	// don't skip entities or displacements when starting in solid
 
+
+#define	MASK_ALL					(0xFFFFFFFF)
+// everything that is normally solid
 #define	MASK_SOLID					(CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_WINDOW|CONTENTS_MONSTER|CONTENTS_GRATE)
+// everything that blocks player movement
+#define	MASK_PLAYERSOLID			(CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_PLAYERCLIP|CONTENTS_WINDOW|CONTENTS_MONSTER|CONTENTS_GRATE)
+// blocks npc movement
+#define	MASK_NPCSOLID				(CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MONSTERCLIP|CONTENTS_WINDOW|CONTENTS_MONSTER|CONTENTS_GRATE)
+// water physics in these contents
+#define	MASK_WATER					(CONTENTS_WATER|CONTENTS_MOVEABLE|CONTENTS_SLIME)
+// everything that blocks lighting
+#define	MASK_OPAQUE					(CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_OPAQUE)
+// everything that blocks lighting, but with monsters added.
+#define MASK_OPAQUE_AND_NPCS		(MASK_OPAQUE|CONTENTS_MONSTER)
+// everything that blocks line of sight for AI
+#define MASK_BLOCKLOS				(CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_BLOCKLOS)
+// everything that blocks line of sight for AI plus NPCs
+#define MASK_BLOCKLOS_AND_NPCS		(MASK_BLOCKLOS|CONTENTS_MONSTER)
+// everything that blocks line of sight for players
+#define	MASK_VISIBLE					(MASK_OPAQUE|CONTENTS_IGNORE_NODRAW_OPAQUE)
+// everything that blocks line of sight for players, but with monsters added.
+#define MASK_VISIBLE_AND_NPCS		(MASK_OPAQUE_AND_NPCS|CONTENTS_IGNORE_NODRAW_OPAQUE)
+// bullets see these as solid
+#define	MASK_SHOT					(CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MONSTER|CONTENTS_WINDOW|CONTENTS_DEBRIS|CONTENTS_HITBOX)
+
+
 
 //add a namespace or class for these functions and vars
-bool should_hit_entity(struct trace_filter* interface, void* entity, int contents_mask) {
+bool should_hit_entity(struct trace_filter* interface, Entity* entity, int contents_mask) {
+  if (entity->get_class_id() == class_id::RESPAWN_ROOM_VISUALIZER) return false;  
   return entity != interface->skip;
 }
 
-enum trace_type_t trace_type = TRACE_EVERYTHING;
-void set_type(enum trace_type_t new_trace_type) {
-  trace_type = new_trace_type;
-}
-
 enum trace_type_t get_type(struct trace_filter* interface) {
-  return trace_type;
+  return TRACE_EVERYTHING;
 }
 
 static void* trace_filter_vtable[2] = { (void*)should_hit_entity, (void*)get_type };
-
 
 class EngineTrace {
 public:
@@ -147,6 +169,16 @@ public:
   }
 
   struct Vec3_aligned Vec3_aligned_add(Vec3* a, Vec3* b) {
+    struct Vec3_aligned result = {
+      .x = a->x + b->x,
+      .y = a->y + b->y,
+      .z = a->z + b->z
+    };
+
+    return result;
+  }
+
+  struct Vec3_aligned Vec3_aligned_add(Vec3* a, Vec3_aligned* b) {
     struct Vec3_aligned result = {
       .x = a->x + b->x,
       .y = a->y + b->y,
@@ -174,32 +206,25 @@ public:
   }
   
   struct ray_t init_ray(Vec3* start, Vec3* end, Vec3* mins, Vec3* maxs) {
-    struct Vec3_aligned delta = Vec3_aligned_subtract(end, start);
-    bool is_swept = (delta.x != 0.0f || delta.y != 0.0f || delta.z != 0.0f);
-    
-    struct ray_t ray = {
-      .start = { 0, 0, 0 },
-      .delta = { delta.x, delta.y, delta.z },
-      .start_offset = Vec3_aligned_add(mins, maxs),
-      .extents = Vec3_aligned_subtract(maxs, mins),
-      .is_ray = true,
-      .is_swept = is_swept
-    };
+    struct ray_t ray;
 
+    ray.delta = Vec3_aligned_subtract(end, start);
+    ray.is_swept = (ray.delta.x * ray.delta.x + ray.delta.y * ray.delta.y) != 0;
+    ray.extents = Vec3_aligned_subtract(maxs, mins);
     ray.extents.x *= 0.5f;
     ray.extents.y *= 0.5f;
     ray.extents.z *= 0.5f;
 
+    ray.is_ray = (ray.extents.x * ray.extents.x + ray.extents.y * ray.extents.y) == 0;
+    ray.start_offset = Vec3_aligned_add(mins, maxs);
     ray.start_offset.x *= 0.5f;
     ray.start_offset.y *= 0.5f;
     ray.start_offset.z *= 0.5f;
-
-    Vec3 start_offset_tmp = Vec3{ray.start_offset.x, ray.start_offset.y, ray.start_offset.z};
-    ray.start = Vec3_aligned_add(start, &start_offset_tmp);
-
+    
+    ray.start = Vec3_aligned_add(start, &ray.start_offset);
     ray.start_offset.x *= -1.0f;
     ray.start_offset.y *= -1.0f;
-    ray.start_offset.z *= -1.0f;    
+    ray.start_offset.z *= -1.0f;
     
     return ray;
   }
@@ -217,9 +242,12 @@ public:
     trace_ray_fn(this, ray, f_mask, p_trace_filter, p_trace);
   }
 
-  void trace_hull(Vec3 start, Vec3 end, Vec3 hull_min, Vec3 hull_max, unsigned int mask, struct trace_t* trace) {
-    struct ray_t ray = this->init_ray(&start, &end, &hull_min, &hull_max);
+  void trace_hull(Vec3* start, Vec3* end, Vec3* hull_min, Vec3* hull_max, unsigned int mask, struct trace_t* trace) {
+    struct ray_t ray = this->init_ray(start, end, hull_min, hull_max);
     struct trace_filter filter;
+    Player* localplayer = entity_list->get_localplayer();
+    this->init_trace_filter(&filter, localplayer);
+
     
     this->trace_ray(&ray, mask, &filter, trace);
   }

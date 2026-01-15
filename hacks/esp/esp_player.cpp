@@ -17,19 +17,21 @@
 
 #include "../../print.hpp"
 
+#define WIDTH_FRACTION 0.35
+
 void box_esp_player(Vec3 screen, Vec3 screen_offset, Player* player, Player* localplayer) {
   if (config.esp.player.box == true) {
     RGBA color = config.esp.player.enemy_color.to_RGBA();
     if (player->get_team() == localplayer->get_team()) color = config.esp.player.team_color.to_RGBA();
     if (config.esp.player.friends == true && player->is_friend() == true) color = config.esp.player.friend_color.to_RGBA();
     
-    draw_outline_rectangle(screen, screen_offset, 0.25, color);
+    draw_outline_rectangle(screen, screen_offset, WIDTH_FRACTION, color);
   }
 }
 
 void health_bar_esp_player(Vec3 screen, Vec3 screen_offset, Player* player) {
   if (config.esp.player.health_bar == true) {
-    float health_offset = (screen.y - screen_offset.y)/4;
+    float health_offset = (screen.y - screen_offset.y)*WIDTH_FRACTION;
 
     //shadow
     surface->set_rgba(0, 0, 0, 255);
@@ -59,25 +61,21 @@ void health_bar_esp_player(Vec3 screen, Vec3 screen_offset, Player* player) {
 
 void name_esp_player(Vec3 screen, Vec3 screen_offset, Player* player, unsigned int i) {
   if (config.esp.player.name == true) {
-    player_info pinfo;
-    if (!engine->get_player_info(i, &pinfo)) return;
-    
 
     wchar_t name[32];
-    size_t len = mbstowcs(name, pinfo.name, 32);
-    if (len == (size_t)-1) return;
+    size_t len = player->get_player_name(name);
 
-    unsigned int name_length = surface->get_string_width(esp_player_font, name);
+    unsigned int name_width = surface->get_string_width(esp_player_font, name);
     
     surface->draw_set_text_color(255, 255, 255, 255);
-    surface->draw_set_text_pos(screen.x - (name_length/2.f), screen_offset.y - surface->get_font_height(esp_player_font));  
+    surface->draw_set_text_pos(screen.x - (name_width/2.f), screen_offset.y - surface->get_font_height(esp_player_font));  
 
     surface->draw_print_text(name, wcslen(name));
   }
 }
 
 void flags_esp_player(Vec3 screen, Vec3 screen_offset, Player* player, unsigned int i) {
-  float flags_x_offset = (screen.y - screen_offset.y)/4;
+  float flags_x_offset = (screen.y - screen_offset.y)*WIDTH_FRACTION;
   float flags_y_offset = 0;
     
   if (config.esp.player.flags.target_indicator == true && player == target_player) {
@@ -97,7 +95,33 @@ void flags_esp_player(Vec3 screen, Vec3 screen_offset, Player* player, unsigned 
 
     flags_y_offset += surface->get_font_height(esp_player_font);
   }
-  
+
+  if (config.esp.player.flags.scoped_indicator == true && player->is_scoped()) {
+    surface->draw_set_text_color(0, 220, 80, 255);
+    surface->draw_set_text_pos(screen.x + flags_x_offset + surface->get_character_width(esp_player_font, L"ZOOM"[0]), screen_offset.y + flags_y_offset);
+
+    surface->draw_print_text(L"ZOOM", wcslen(L"ZOOM"));
+
+    flags_y_offset += surface->get_font_height(esp_player_font);    
+  }
+
+  if (config.debug.show_active_flag_ids_of_players == true) {
+
+    for (unsigned int i = 0; i < TF_COND_LAST; ++i) { 
+      if(player->in_cond((tf_cond)i) == true) {
+	std::wstring cond_number = std::to_wstring(i);
+	
+	surface->draw_set_text_color(255, 225, 255, 255);
+	surface->draw_set_text_pos(screen.x + flags_x_offset + surface->get_character_width(esp_player_font, cond_number[0]), screen_offset.y + flags_y_offset);
+
+	surface->draw_print_text(cond_number.c_str(), wcslen(cond_number.c_str()));
+
+	flags_y_offset += surface->get_font_height(esp_player_font);      
+      }        
+    }
+
+  }  
+
   /*
   if (true) {
     player_info pinfo;
@@ -128,16 +152,14 @@ void esp_player(unsigned int i, Player* player) {
     }
   }
   
-  Player* localplayer = entity_list->get_localplayer();  
-  if (player == localplayer                                                                                      || // Ignore Local Player
-      player->is_dormant()                                                                                       || // Ignore Dormat (TODO: Add fading effect to dormat players)
-      player->get_lifestate() != 1                                                                               || // Ignore Dead
-      (player->get_team() == localplayer->get_team() && config.esp.player.team == false && !player->is_friend()) || // Ignore Team
-      (player->is_friend() && config.esp.player.friends == false && (config.esp.player.team == false && player->get_team() == localplayer->get_team())) // Ignore Friends
-      ) 
-    {
-      return;
-    }
+  Player* localplayer = entity_list->get_localplayer();
+  
+  if (player == localplayer) return; // Ignore Local Player
+  if (player->is_dormant()) return; // Ignore Dormat (TODO: Add fading effect to dormat players)
+  if (player->get_lifestate() != 1) return;// Ignore Dead
+  if (player->get_team() != localplayer->get_team() && config.esp.player.enemy == false && !player->is_friend()) return; // Ignore Enemy
+  if (player->get_team() == localplayer->get_team() && config.esp.player.team == false && !player->is_friend()) return; // Ignore Team
+  if (player->is_friend() && config.esp.player.friends == false && (config.esp.player.team == false && player->get_team() == localplayer->get_team())) return; // Ignore Friends 
 
   /*
   //bone draw ID debug

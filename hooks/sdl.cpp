@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_keyboard.h>
 #include <SDL2/SDL_syswm.h>
 #include <GL/glew.h>
 
@@ -9,25 +10,73 @@
 #include "../print.hpp"
 
 #include "../gui/menu.hpp"
+#include "../gui/indicators.hpp"
 
 bool (*poll_event_original)(SDL_Event*) = NULL;
+int  (*peep_events_original)(SDL_Event*, int, SDL_eventaction, int, int) = NULL;
 void (*swap_window_original)(void*) = NULL;
 Uint32 (*get_window_flags_original)(SDL_Window*) = NULL;
 SDL_bool (*get_window_WM_info_original)(SDL_Window* window, SDL_SysWMinfo* info) = NULL;
 void (*get_window_size_original)(SDL_Window* window, int* w, int* h) = NULL;
 
+// This filters key events to the game
+int SDLCALL event_filter(void* userdata, SDL_Event* event) {
+  if (menu_focused == false) return 1; // Don't filter anything if the menu is closed
+
+  
+  if (sdl_window != nullptr && ImGui::IsImGuiFullyInitialized())
+    ImGui_ImplSDL2_ProcessEvent(event);
+
+  get_input(event);
+
+  // Allow keys to be released
+  if (event->type == SDL_KEYUP) {
+    return 1;
+  }
+  
+  // Block inputs to the game when editing input boxes
+  if (ImGui::IsAnyItemActive() == true && ImGui::IsMouseDown(ImGuiMouseButton_Left) != true) return 0;
+  
+  // Only some movement keys
+  if (event->type == SDL_KEYDOWN) {
+    SDL_KeyboardEvent* key = &event->key;
+    SDL_Keycode sym = key->keysym.sym;
+    if (sym == SDLK_w || sym == SDLK_a || sym == SDLK_s || sym == SDLK_d || sym == SDLK_INSERT ||
+	sym == SDLK_SPACE || sym == SDLK_LCTRL) {
+      return 1;
+    }
+  }
+  
+  // Block everything else
+  return 0;
+}
+
 
 bool poll_event_hook(SDL_Event* event) {
   bool ret = poll_event_original(event);
-
   
-  if (ret == true && sdl_window != nullptr && ImGui::GetCurrentContext())
+  if (sdl_window != nullptr && ImGui::IsImGuiFullyInitialized())
     ImGui_ImplSDL2_ProcessEvent(event);
   
   get_input(event);
   
   return ret;
 }
+
+
+int peep_events_hook(SDL_Event* events, int numevents, SDL_eventaction action, int min, int max) {
+  int ret = peep_events_original(events, numevents, action, min, max);
+
+  /*
+  if(ret != -1 && sdl_window != nullptr && ImGui::GetCurrentContext())
+    ImGui_ImplSDL2_ProcessEvent(events);
+
+  get_input(events);
+  */
+  
+  return ret;
+}
+
 
 void swap_window_hook(SDL_Window* window) {
   static SDL_GLContext original_context = NULL, new_context = NULL;
@@ -52,30 +101,7 @@ void swap_window_hook(SDL_Window* window) {
 
     orig_style = ImGui::GetStyle();
 
-    ImGuiStyle* style = &ImGui::GetStyle();
-
-    style->Colors[ImGuiCol_WindowBg]         = ImVec4(0.1, 0.1, 0.1, 1);
-
-    style->Colors[ImGuiCol_TitleBgActive]    = ImVec4(0.05, 0.05, 0.05, 1);
-    style->Colors[ImGuiCol_TitleBg]          = ImVec4(0.05, 0.05, 0.05, 1);
-
-    style->Colors[ImGuiCol_CheckMark]        = ImVec4(0.869346734, 0.450980392, 0.211764706, 1);
-
-    style->Colors[ImGuiCol_FrameBg]          = ImVec4(0.15, 0.15, 0.15, 1);
-    style->Colors[ImGuiCol_FrameBgHovered]   = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-    style->Colors[ImGuiCol_FrameBgActive]    = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-
-    style->Colors[ImGuiCol_ButtonHovered]    = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-    style->Colors[ImGuiCol_ButtonActive]     = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-
-    style->Colors[ImGuiCol_SliderGrab]       = ImVec4(0.869346734, 0.450980392, 0.211764706, 1);
-    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.899346734, 0.480980392, 0.241764706, 1);
-    style->GrabMinSize = 2;
-
-    style->Colors[ImGuiCol_Header]           = ImVec4(0.18, 0.18, 0.18, 1);
-    style->Colors[ImGuiCol_HeaderHovered]    = ImVec4(0.869346734, 0.450980392, 0.211764706, 0.5);
-    style->Colors[ImGuiCol_HeaderActive]     = ImVec4(0.919346734, 0.500980392, 0.261764706, 0.6);
-
+    set_imgui_theme();
   }
 
   
@@ -90,11 +116,14 @@ void swap_window_hook(SDL_Window* window) {
   ImGui_ImplSDL2_NewFrame();
   ImGui::NewFrame();
 
-  if (menu_focused) {
-    draw_menu();
-  }
-  
   draw_watermark();
+
+  draw_tickbase_indicator();
+
+  if (menu_focused == true) {
+    draw_menu();
+  }  
+
   
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

@@ -1,23 +1,17 @@
 #!/bin/bash
 
-# Clone and build funchook
-if [ -d "libs/funchook" ]; then
+# Clone and build funchook, if not done already.
+if [ -d "libs/funchook" ] && [ ! -f "libs/funchook/build/libfunchook.a" ] && [ ! -f "libs/funchook/build/libdistorm.a" ]; then
     rm -rf libs
 fi
 
 if [ ! -d "libs/funchook" ]; then
     mkdir libs
-    cd libs
-    git clone https://github.com/Doctor-Coomer/funchook.git
-    cd funchook
-    mkdir build
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
+    git clone https://github.com/Doctor-Coomer/funchook.git libs/
+    mkdir libs/funchook/build
+    cmake -DCMAKE_BUILD_TYPE=Release libs/funchook/build
     make
 fi
-
-# Escape back to the root project directory
-cd ../../..
 
 # Build hack
 make clean && make

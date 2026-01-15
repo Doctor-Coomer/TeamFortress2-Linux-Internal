@@ -9,9 +9,9 @@
 #include "../../classes/player.hpp"
 
 void draw_players_imgui() {
-  if (entity_cache[class_id::PLAYER].size() <= 0) return;
+  //if (entity_cache[class_id::PLAYER].size() <= 0) return;
 
-  ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+  //ImDrawList* draw_list = ImGui::GetForegroundDrawList();
   
   /*
   Player* localplayer = entity_list->get_localplayer();  

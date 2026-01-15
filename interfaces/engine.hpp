@@ -60,6 +60,14 @@ public:
 
     return get_player_index_from_id_fn(this, user_id);
   }
+
+  void client_cmd_unrestricted(const char* cmd) {
+    void** vtable = *(void ***)this;
+
+    void (*client_cmd_unrestricted_fn)(void*, const char*) = (void (*)(void*, const char*))vtable[106];
+
+    client_cmd_unrestricted_fn(this, cmd);
+  }
 };
 
 static inline Engine* engine;

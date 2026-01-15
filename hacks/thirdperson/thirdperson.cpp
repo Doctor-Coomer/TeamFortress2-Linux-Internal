@@ -52,17 +52,12 @@ void thirdperson(view_setup* setup) {
     Vec3 start = origin;
     Vec3 end = origin + offset;
 
-    /*
-    if (Vars::Visuals::Thirdperson::Collide.Value)
-      {
-	float hull = 9.f;
-	Vec3 mins = { -hull, -hull, -hull }, maxs = { hull, hull, hull };
+    float hull = 9.f;
+    Vec3 mins = { -hull, -hull, -hull }, maxs = { hull, hull, hull };
 
-	struct trace_t trace;
-        engine_trace->trace_hull(start, end, mins, maxs, MASK_SOLID, &trace);
-	end = trace.endpos;
-  }
-    */
+    struct trace_t trace;
+    engine_trace->trace_hull(&start, &end, &mins, &maxs, MASK_SOLID, &trace);
+    end = trace.endpos;
     
     setup->origin = end;
   }

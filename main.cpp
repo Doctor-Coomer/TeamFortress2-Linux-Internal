@@ -1,11 +1,16 @@
-#include "memory.hpp"
-#include "print.hpp"
+#include <SDL2/SDL_events.h>
+#include <string>
+#include <unistd.h>
+#include <csignal>
+#include <format>
 
-#include "random_seed.hpp"
+#include "print.hpp"
+#include "assert.hpp"
+
+#include "vec.hpp"
+#include "memory.hpp"
 
 #include "classes/keyvalues.hpp"
-
-#include <unistd.h>
 
 #include "interfaces/engine.hpp"
 #include "interfaces/client.hpp"
@@ -49,131 +54,104 @@
 #include "hooks/draw_view_models.cpp"
 #include "hooks/fire_event_client_side.cpp"
 #include "hooks/frame_stage_notify.cpp"
+#include "hooks/intro_menu_on_tick.cpp"
+#include "hooks/class_menu_show_panel.cpp"
+#include "hooks/team_menu_show_panel.cpp"
+#include "hooks/map_info_menu_show_panel.cpp"
+#include "hooks/text_window_show_panel.cpp"
+#include "hooks/scene_end.cpp"
 
-#include "vec.hpp"
+#include "random_seed.hpp"
 
 void** client_mode_vtable;
 void** vgui_vtable;
 void** client_vtable;
 void** model_render_vtable;
 void** game_event_manager_vtable;
+void** render_view_vtable;
 
 funchook_t* funchook;
 
+/*
+void signal_handler(int signal) {
+  error_box((
+	     "Signal recieved: " + std::to_string(signal)
+	     + "\n" + std::format("{:p}", __builtin_return_address(0))
+	     + "\n" + std::format("{:p}", __builtin_return_address(1))
+	     + "\n" + std::format("{:p}", __builtin_return_address(2))
+	     + "\n" + std::format("{:p}", __builtin_return_address(3))
+	     + "\n" + std::format("{:p}", __builtin_return_address(4))
+	     ).c_str());
+}
+*/
+
 __attribute__((constructor))
 void entry() {  
+
+  //std::signal(SIGKILL, signal_handler);
+  
   // Interfaces
   client = (Client*)get_interface("./tf/bin/linux64/client.so", "VClient017");
-  if (client == nullptr) {
-    print("VClient017 is missing\n");
-    return;
-  }
+  error_assert(client == nullptr, "VClient017 is missing");
   
   engine = (Engine*)get_interface("./bin/linux64/engine.so", "VEngineClient014");
-  if (engine == nullptr) {
-    print("VEngineClient014 is missing\n");
-    return;
-  }
+  error_assert(engine == nullptr, "VEngineClient014 is missing");
   
   vgui = get_interface("./bin/linux64/vgui2.so", "VGUI_Panel009");
-  if (vgui == nullptr) {
-    print("VGUI_Panel009 is missing\n");
-    return;
-  }
+  error_assert(vgui == nullptr, "VGUI_Panel009 is missing");
   
   surface = (Surface*)get_interface("./bin/linux64/vguimatsurface.so", "VGUI_Surface030");
-  if (surface == nullptr) {
-    print("VGUI_Surface030 is missing\n");
-    return;
-  }
+  error_assert(surface == nullptr, "VGUI_Surface030 is missing");
   
   unsigned long func_address = (unsigned long)sigscan_module("client.so", "48 8D 05 ? ? ? ? 48 8B 38 48 8B 07 FF 90 ? ? ? ? 48 8D 15 ? ? ? ? 84 C0");
   unsigned int input_eaddr = *(unsigned int*)(func_address + 0x3);
   unsigned long next_instruction = (unsigned long)(func_address + 0x7);
   input = (Input*)(*(void**)(next_instruction + input_eaddr));
-  if (input == nullptr) {
-    print("CInput is missing\n");
-    return;
-  }
-  
+  error_assert(input == nullptr, "CInput is missing");
+
   unsigned long check_stuck_address = (unsigned long)sigscan_module("client.so", "48 8D 05 ? ? ? ? 48 89 85 ? ? ? ? 74 ? 48 8B 38");
   unsigned int move_helper_eaddr = *(unsigned int*)(check_stuck_address + 0x3);
   unsigned long check_stuck_next_instruction = (unsigned long)(check_stuck_address + 0x7);
   move_helper = (MoveHelper*)(*(void**)(check_stuck_next_instruction + move_helper_eaddr));
-  if (move_helper == nullptr) {
-    print("CMoveHelper is missing\n");
-    return;
-  }
+  error_assert(move_helper == nullptr, "CMoveHelper is missing");
   
   unsigned long rcon_addr_change_address = (unsigned long)sigscan_module("engine.so", "48 8D 05 ? ? ? ? 4C 8B 40");
   unsigned int client_state_eaddr = *(unsigned int*)(rcon_addr_change_address + 0x3);
   unsigned long rcon_addr_change_next_instruction = (unsigned long)(rcon_addr_change_address + 0x7);
   client_state = (ClientState*)((void*)(rcon_addr_change_next_instruction + client_state_eaddr));
-  if (client_state == nullptr) {
-    print("CClientState is missing\n");
-    return;
-  }
+  error_assert(client_state == nullptr, "CClientState is missing");
   
   prediction = (Prediction*)get_interface("./tf/bin/linux64/client.so", "VClientPrediction001");
-  if (prediction == nullptr) {
-    print("VClientPrediction001 is missing\n");
-    return;
-  }
+  error_assert(prediction == nullptr, "VClientPrediction001 is missing");
  
   game_movement = (GameMovement*)get_interface("./tf/bin/linux64/client.so", "GameMovement001");
-  if (game_movement == nullptr) {
-    print("GameMovement001 is missing\n");
-    return;
-  }
+  error_assert(game_movement == nullptr, "GameMovement001 is missing");
  
   overlay = (DebugOverlay*)get_interface("./bin/linux64/engine.so", "VDebugOverlay003");
-  if (overlay == nullptr) {
-    print("VDebugOverlay003 is missing\n");
-    return;
-  }
+  error_assert(overlay == nullptr, "VDebugOverlay003 is missing");
  
   entity_list = (EntityList*)get_interface("./tf/bin/linux64/client.so", "VClientEntityList003");
-  if (entity_list == nullptr) {
-    print("VClientEntityList003 is missing\n");
-    return;
-  }
+  error_assert(entity_list == nullptr, "VClientEntityList003 is missing");
  
   render_view = (RenderView*)get_interface("./bin/linux64/engine.so", "VEngineRenderView014");
-  if (render_view == nullptr) {
-    print("VEngineRenderView014 is missing\n");
-    return;
-  }
+  error_assert(render_view == nullptr, "VEngineRenderView014 is missing");
  
   engine_trace = (EngineTrace*)get_interface("./bin/linux64/engine.so", "EngineTraceClient003");
-  if (engine_trace == nullptr) {
-    print("EngineTraceClient003 is missing\n");
-    return;
-  }
+  error_assert(engine_trace == nullptr, "EngineTraceClient003 is missing");
  
   model_render = (ModelRender*)get_interface("./bin/linux64/engine.so", "VEngineModel016");
-  if (model_render == nullptr) {
-    print("VEngineModel016 is missing\n");
-    return;
-  }
+  error_assert(model_render == nullptr, "VEngineModel016 is missing");
 
   material_system = (MaterialSystem*)get_interface("./bin/linux64/materialsystem.so", "VMaterialSystem082");
-  if (material_system == nullptr) {
-    print("VMaterialSystem082 is missing\n");
-    return;
-  }
+  error_assert(material_system == nullptr, "VMaterialSystem082 is missing");
  
   convar_system = (ConvarSystem*)get_interface("./bin/linux64/libvstdlib.so", "VEngineCvar004");
-  if (convar_system == nullptr) {
-    print("VEngineCvar004 is missing\n");
-    return;
-  }
+  error_assert(convar_system == nullptr, "VEngineCvar004 is missing");
  
   game_event_manager = (GameEventManager*)get_interface("./bin/linux64/engine.so", "GAMEEVENTSMANAGER002");
-  if (game_event_manager == nullptr) {
-    print("GAMEEVENTSMANAGER002 is missing\n");
-    return;
-  }
+  error_assert(game_event_manager == nullptr, "GAMEEVENTSMANAGER002 is missing");
   {
+    // https://developer.valvesoftware.com/wiki/Team_Fortress_2/Scripting/Game_Events
     std::vector<const char*> events = {	"client_beginconnect", "client_connected", "client_disconnect", "game_newmap",
 					"teamplay_round_start", "scorestats_accumulated_update", "mvm_reset_stats",
 					"player_connect_client", "player_spawn", "player_changeclass", "player_hurt",
@@ -190,17 +168,11 @@ void entry() {
   
   {
     steam_client = (SteamClient*)get_interface("../../../linux64/steamclient.so", "SteamClient020");
-    if (steam_client == nullptr) {
-      print("SteamClient020 is missing\n");
-      return;
-    }
+    error_assert(steam_client == nullptr, "SteamClient020 is missing");
     int steam_pipe = steam_client->create_steam_pipe();
     int steam_user = steam_client->connect_to_global_user(steam_pipe);
     steam_friends = (SteamFriends*)steam_client->get_steam_friends_interface(steam_user, steam_pipe, "SteamFriends017");
-    if (steam_friends == nullptr) {
-      print("SteamFriends017 is missing\n");
-      return;
-    }
+    error_assert(steam_friends == nullptr, "SteamFriends017 is missing");
   }
 
   client_vtable = *(void ***)client;
@@ -208,19 +180,13 @@ void entry() {
   __uint32_t client_mode_eaddr = *(__uint32_t *)((__uint64_t)(hud_process_input_addr) + 0x3);
   void* client_mode_next_instruction = (void *)((__uint64_t)(hud_process_input_addr) + 0x7);
   void* client_mode_interface = *(void **)((__uint64_t)(client_mode_next_instruction) + client_mode_eaddr);
-  if (client_mode_interface == nullptr) {
-    print("ClientModeShared is missing\n");
-    return;
-  }
+  error_assert(client_mode_interface == nullptr, "ClientModeShared is missing");
   
   unsigned long hud_update = (unsigned long)client_vtable[11];
   unsigned int global_vars_eaddr = *(unsigned int *)(hud_update + 0x16);
   unsigned long global_vars_next_instruction = (unsigned long)(hud_update + 0x1A);
   global_vars = (GlobalVars*)(*(void **)(global_vars_next_instruction + global_vars_eaddr));
-  if (global_vars == nullptr) {
-    print("CGlobalVars is missing\n");
-    return;
-  }
+  error_assert(global_vars == nullptr, "CGlobalVars is missing");
  
   // VMT Function Hooks
   client_mode_vtable = *(void***)client_mode_interface;  
@@ -230,7 +196,7 @@ void entry() {
   } else {
     print("ClientModeShared::CreateMove hooked\n");
   }
-
+  
   client_create_move_original = (void (*)(void*, int, float, bool))client_vtable[21];
   if (!write_to_table(client_vtable, 21, (void*)client_create_move_hook)) {
     print("Client::CreateMove hook failed\n");
@@ -253,7 +219,7 @@ void entry() {
   }
   
   vgui_vtable = *(void ***)vgui;
-  paint_traverse_original = (void (*)(void*, void*, __int8_t, __int8_t))vgui_vtable[42];  
+  paint_traverse_original = (void (*)(void*, void*, bool, bool))vgui_vtable[42];  
   if (!write_to_table(vgui_vtable, 42, (void*)paint_traverse_hook)) {
     print("PaintTraverse hook failed\n");
   } else {
@@ -261,7 +227,7 @@ void entry() {
   }
 
   model_render_vtable = *(void ***)model_render;    
-  draw_model_execute_original = (void (*)(void*, void*, ModelRenderInfo_t*, VMatrix*))model_render_vtable[19];  
+  draw_model_execute_original = (void (*)(void*, void*, ModelRenderInfo*, VMatrix*))model_render_vtable[19];  
   if (!write_to_table(model_render_vtable, 19, (void*)draw_model_execute_hook)) {
     print("DrawModelExecute hook failed\n");
   } else {
@@ -283,6 +249,15 @@ void entry() {
   } else {
     print("FrameStageNotify hooked\n");
   }  
+
+  render_view_vtable = *(void***)render_view;
+
+  scene_end_original = (void (*)(void*, void*))render_view_vtable[9];
+  if (!write_to_table(render_view_vtable, 9, (void*)scene_end_hook)) {
+    print("SceneEnd hook failed\n");
+  } else {
+    print("SceneEnd hooked\n");
+  }  
   
   
   // Non-VMT Function hooks
@@ -301,53 +276,65 @@ void entry() {
   draw_view_models_original = (void (*)(void*, view_setup*, bool))sigscan_module("client.so", "55 31 C0 48 89 E5 41 57 41 56 41 55 41 89 D5 41 54 49 89 FC 53 48 89 F3 48 81 EC");
 
   attribute_hook_value_float_original = (float (*)(float, const char*, Entity*, void*, bool))sigscan_module("client.so", "55 31 C0 48 89 E5 41 57 41 56 41 55 49 89 F5 41 54 49 89 FC 53 89 CB");
+
+  intro_menu_on_tick_original = (void (*)(void*))sigscan_module("client.so", "55 48 89 E5 41 55 41 54 49 89 FC 48 8B BF ? ? ? ? 48 8B 07 FF 90 ? ? ? ? 84 C0");
+  
+  class_menu_show_panel_original = (void (*)(void*, bool))sigscan_module("client.so", "55 48 89 E5 41 55 41 54 49 89 FC 53 89 F3 40 0F B6 F6 48 83 EC ? E8 ? ? ? ? 84 DB 48 8D 1D");
+
+  team_menu_show_panel_original = (void (*)(void*, bool))sigscan_module("client.so", "55 48 89 E5 41 56 41 55 41 54 49 89 FC 53 48 83 EC ? 40 84 F6 0F 85");
+
+  map_info_menu_show_panel_original = (void (*)(void*, bool))sigscan_module("client.so", "55 48 8D 15 ? ? ? ? 48 89 E5 41 54 49 89 FC 53 48 8B 07 89 F3");
+
+  text_window_show_panel_original = (void (*)(void*, bool))sigscan_module("client.so", "55 48 8D 15 ? ? ? ? 48 89 E5 41 54 41 89 F4 53 48 8B 07");
   
   int rv;
   
   rv = funchook_prepare(funchook, (void**)&in_cond_original, (void*)in_cond_hook);
-  if (rv != 0) {
-    print("Failed to prepare InCond hook\n");
-    return;
-  }
+  error_assert(rv != 0, "Failed to prepare InCond hook\n");
 
   rv = funchook_prepare(funchook, (void**)&load_white_list_original, (void*)load_white_list_hook);
-  if (rv != 0) {
-    print("Failed to prepare LoadWhiteList hook\n");
-    return;
-  }
+  error_assert(rv != 0, "Failed to prepare LoadWhiteList hook\n");
 
   rv = funchook_prepare(funchook, (void**)&cl_move_original, (void*)cl_move_hook);
-  if (rv != 0) {
-    print("Failed to prepare CL_Move hook\n");
-    return;
-  }  
+  error_assert(rv != 0, "Failed to prepare CL_Move hook\n");
 
   rv = funchook_prepare(funchook, (void**)&should_draw_local_player_original, (void*)should_draw_local_player_hook);
-  if (rv != 0) {
-    print("Failed to prepare ShouldDrawLocalPlayer hook\n");
-    return;
-  }  
+  error_assert(rv != 0, "Failed to prepare ShouldDrawLocalPlayer hook\n");
 
   rv = funchook_prepare(funchook, (void**)&should_draw_this_player_original, (void*)should_draw_this_player_hook);
-  if (rv != 0) {
-    print("Failed to prepare ShouldDrawThisPlayer hook\n");
-    return;
-  }  
+  error_assert(rv != 0, "Failed to prepare ShouldDrawThisPlayer hook\n");
 
   rv = funchook_prepare(funchook, (void**)&draw_view_models_original, (void*)draw_view_models_hook);
-  if (rv != 0) {
-    print("Failed to prepare DrawViewModels hook\n");
-    return;
-  }  
+  error_assert(rv != 0, "Failed to prepare DrawViewModels hook\n");
+
+  rv = funchook_prepare(funchook, (void**)&intro_menu_on_tick_original, (void*)intro_menu_on_tick_hook);
+  error_assert(rv != 0, "Failed to prepare CTFIntroMenu::OnTick hook\n");
+  
+  rv = funchook_prepare(funchook, (void**)&class_menu_show_panel_original, (void*)class_menu_show_panel_hook);
+  error_assert(rv != 0, "Failed to prepare CTFClassMenu::ShowPanel hook\n");
+
+  rv = funchook_prepare(funchook, (void**)&team_menu_show_panel_original, (void*)team_menu_show_panel_hook);
+  error_assert(rv != 0, "Failed to prepare CTFTeamMenu::ShowPanel hook\n");
+  
+  rv = funchook_prepare(funchook, (void**)&map_info_menu_show_panel_original, (void*)map_info_menu_show_panel_hook);
+  error_assert(rv != 0, "Failed to prepare CTFMapInfoMenu::ShowPanel hook\n");
+
+  rv = funchook_prepare(funchook, (void**)&text_window_show_panel_original, (void*)text_window_show_panel_hook);
+  error_assert(rv != 0, "Failed to prepare CTFTextWindow::ShowPanel hook\n");
 
   key_values_constructor_original = (KeyValues* (*)(void*, const char*))sigscan_module("client.so", "55 31 C0 66 0F EF C0 48 89 E5 53");
-  if (key_values_constructor_original == nullptr) {
-    print("Failed to find KeyValues() constructor\n");
-    return;
-  }
+  error_assert(key_values_constructor_original == nullptr, "Failed to find KeyValues() constructor");
+
+  key_values_set_int_original = (void (*)(void*, const char*, int))sigscan_module("client.so", "55 48 89 E5 53 89 D3 BA ? ? ? ? 48 83 EC ? E8 ? ? ? ? 48 85 C0 74 ? 89 58");
+  error_assert(key_values_set_int_original == nullptr, "Failed to find KeyValues::SetInt()");
+  rv = funchook_prepare(funchook, (void**)&key_values_set_int_original, (void*)key_values_set_int_hook);
+  error_assert(rv != 0, "Failed to prepare KeyValues::SetInt() hook\n");
   
-  // Hook Vulkan if present
-  // Determine if we're in Vulkan mode
+  key_values_load_from_buffer_original = (bool (*)(void*, const char*, const char*, void*, const char*))sigscan_module("client.so", "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 81 EC ? ? ? ? 48 85 D2 48 89 BD");
+  error_assert(key_values_load_from_buffer_original == nullptr, "Failed to find KeyValues::LoadFromBuffer()");  
+  
+  // Hook Vulkan error_assertpresent
+  // Determine error_assertwe're in Vulkan mode
   void* lib_dxvk_base_address = get_module_base_address("libdxvk_d3d9.so");
   if (lib_dxvk_base_address != nullptr) {  
     void* lib_vulkan_handle = dlopen("/run/host/usr/lib/libvulkan.so.1", RTLD_LAZY | RTLD_NOLOAD);
@@ -405,9 +392,7 @@ void entry() {
 	}
       }
   
-      if (queue_family == (uint32_t)-1) {
-	print("queue_family fail\n");
-      }
+      error_assert(queue_family == (uint32_t)-1, "queue_family fail\n");
   
       constexpr const char* device_extension = "VK_KHR_swapchain";
       constexpr const float queue_priority = 1.0f;
@@ -428,10 +413,7 @@ void entry() {
       VkDevice vk_fake_device = VK_NULL_HANDLE;
 
       vkCreateDevice(vk_physical_device, (const VkDeviceCreateInfo*)&create_info, vk_allocator, &vk_fake_device);
-      if (vk_fake_device == nullptr) {
-	print("Failed to create Vulkan dummy device\n");
-	return;
-      }
+      error_assert(vk_fake_device == nullptr, "Failed to create Vulkan dummy device\n");
       
       queue_present_original = (VkResult (*)(VkQueue, const VkPresentInfoKHR*))vkGetDeviceProcAddr(vk_fake_device, "vkQueuePresentKHR");
       acquire_next_image_original = (VkResult (*)(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, VkFence, uint32_t*))vkGetDeviceProcAddr(vk_fake_device, "vkAcquireNextImageKHR");
@@ -442,53 +424,39 @@ void entry() {
 
       // Hook the functions
       rv = funchook_prepare(funchook, (void**)&queue_present_original, (void*)queue_present_hook);
-      if (rv != 0) {
-	print("Failed to prepare vkQueuePresentKHR hook\n");
-	return;
-      }  
+      error_assert(rv != 0, "Failed to prepare vkQueuePresentKHR hook\n");
 
       rv = funchook_prepare(funchook, (void**)&acquire_next_image_original, (void*)acquire_next_image_hook);
-      if (rv != 0) {
-	print("Failed to prepare vkAcquireNextImageKHR hook\n");
-	return;
-      }
+      error_assert(rv != 0, "Failed to prepare vkAcquireNextImageKHR hook\n");
 
       rv = funchook_prepare(funchook, (void**)&acquire_next_image2_original, (void*)acquire_next_image2_hook);
-      if (rv != 0) {
-	print("Failed to prepare vkAcquireNextImage2KHR hook\n");
-	return;
-      }  
+      error_assert(rv != 0, "Failed to prepare vkAcquireNextImage2KHR hook\n");
 
       rv = funchook_prepare(funchook, (void**)&create_swapchain_original, (void*)create_swapchain_hook);
-      if (rv != 0) {
-	print("Failed to prepare vkCreateSwapchainKHR hook\n");
-	return;
-      }  
+      error_assert(rv != 0, "Failed to prepare vkCreateSwapchainKHR hook\n");
 
       dlclose(lib_vulkan_handle);
     }
   }
-  
-  rv = funchook_install(funchook, 0);
-  if (rv != 0) {
-    print("Non-VMT related hooks failed\n");
-  }
 
-  // Bespoke SDL hooking
+  /* SDL Hooking */
+  SDL_SetEventFilter(event_filter, nullptr);
+  //SDL_AddEventWatch(event_watch, nullptr);
+    
+  rv = funchook_install(funchook, 0);
+  error_assert(rv != 0, "Non-VMT related hooks failed\n");
+
   void* lib_sdl_handle = dlopen("/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0", RTLD_LAZY | RTLD_NOLOAD);
 
-  if (!lib_sdl_handle) {
-    print("Failed to load SDL2\n");
-    return;
-  }
+  error_assert(lib_sdl_handle == nullptr, "Failed to load SDL2\n");
  
   print("SDL2 loaded at %p\n", lib_sdl_handle);
 
   if (!sdl_hook(lib_sdl_handle, "SDL_PollEvent", (void*)poll_event_hook, (void **)&poll_event_original)) {
     print("Failed to hook SDL_PollEvent\n");
     return;
-  }
-
+  }  
+  
   if (!sdl_hook(lib_sdl_handle, "SDL_GL_SwapWindow", (void*)swap_window_hook, (void **)&swap_window_original)) {
     print("Failed to hook SDL_GL_SwapWindow\n");
     return;
@@ -510,6 +478,7 @@ void entry() {
     return;
   }
 
+
   dlclose(lib_sdl_handle);
   
   // Misc static variables and hookable things
@@ -522,11 +491,14 @@ void entry() {
 }
 
 __attribute__((destructor))
-void exit() {
+void __exit() {
 
+  print("Uninjecting...\n");
+
+  print("Unhooking VMT functions\n");
   // Unhook VMT Functions
   if (!write_to_table(client_mode_vtable, 22, (void*)client_mode_create_move_original)) {
-    print("ClientMode::CreateMove failed to restore hook\n");
+    print("ClientMode::CreateMove failed to restore hook\n"); 
   }
 
   if (!write_to_table(client_vtable, 21, (void*)client_create_move_original)) {
@@ -557,10 +529,18 @@ void exit() {
     print("FrameStageNotify failed to restore hook\n");
   }
 
-  
+  if (!write_to_table(render_view_vtable, 9, (void*)scene_end_original)) {
+    print("SceneEnd failed to restore hook\n");
+  }
+
+
+  print("Unhooking Non-VMT functions\n");
   // Unhook Non-VMT Functions
   funchook_uninstall(funchook, 0);
 
+  print("Unhooking SDL functions\n");
+  SDL_SetEventFilter(nullptr, nullptr);
+  
   // Unhook SDL
   void* lib_sdl_handle = dlopen("/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0", RTLD_LAZY | RTLD_NOLOAD);
 
@@ -586,13 +566,15 @@ void exit() {
 
   dlclose(lib_sdl_handle);
 
+  print("Fixing thirdperson\n");
   // Fix thirdperson hack still being enabled when uninjecting
   {
     Player* localplayer = entity_list->get_localplayer();
     if (localplayer != nullptr)
       localplayer->set_thirdperson(false);
   }
-  
+
+  print("Fixing cursor\n");
   // Fix cursor visibility when we've removed/unhooked the menu
   if (menu_focused == true)
     surface->set_cursor_visible(!menu_focused);
