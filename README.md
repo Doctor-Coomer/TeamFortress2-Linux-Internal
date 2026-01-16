@@ -1,7 +1,13 @@
 # What is this?
 This is a program that is compiled into a [Shared Object](https://en.wikipedia.org/wiki/Shared_library), and is used to give Extrasensory Perception, automate gameplay, and overall enhance the game through removing restrictions and adding extra features, for "Team Fortress 2". In a nutshell, this is a hack/cheat.  
+<<<<<<< HEAD
 
 Development is intermittent, as there is currently only one person (me) with push and merge rights (a Project Maintainer) at this time. Please read the [I want to contribute!](#-i-want-to-contribute!) section for more detail.
+=======
+  
+Development is intermittent, as there is currently only one person (me) with push and merge rights (a Project Maintainer) at this time. Please read the [I want to contribute!](#-i-want-to-contribute!) section for more detail.  
+<b>Maintainer note: I've been especially inactive since August, due to things outside of this project taking priority. Open Issues and Pull requests won't be properly addressed by me for a long time. I am also reachable if you wish to be a dedicated maintainer of the project alongside myself.</b>
+>>>>>>> 667dd239842ab2474c0b7222ac0e0a25be1a4584
   
 Also, this project started as an unfaithful port of [this internal hack](https://github.com/faluthe/tf_c) to C++, but has far surpassed the goal of "just a port".  
 
@@ -73,7 +79,7 @@ Hello, I ([Dr_Coomer](https://github.com/Doctor-Coomer)) can be busy outside thi
 If you want to contribute, please keep these in mind:  
 - This project uses snake_case
 - This project uses a [Unity Build](https://en.wikipedia.org/wiki/Unity_build) paradigm
-- I attempt to prioritize straight forward and simple, yet robust, C++ code <!-- a link to a blog explaining my preferred style of "modern C++" should be added here -->
+- I attempt to roughly prioritize straight forward and simple, yet robust, C-Style C++ code <!-- a link to a blog explaining my preferred style of "modern C++" should be added here -->
 
 If you contribute entirely new features and files, I will most likely sit down and rewrite your entire pull request to fit with those points. That isn't a reason to not contribute, but that is a reason why your changes may take a while to add. All contributions are valuable.  
 
