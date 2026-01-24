@@ -3,10 +3,6 @@
 LIB_PATH=$(pwd)/tf2.so
 PROCID=$(pgrep tf_linux64 | head -n 1)
 
-if [[ "$(execstack -q tf2.so)" = "X tf2.so" ]]; then
-    execstack -c tf2.so
-fi
-
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root"
     exit 1
