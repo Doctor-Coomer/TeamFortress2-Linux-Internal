@@ -10,7 +10,7 @@ OBJ_FILES =  main.cpp.o # Unity build
 OBJ_FILES += libsigscan/libsigscan.c.o # Sigscan library
 OBJ_FILES += imgui/imgui_tables.cpp.o imgui/imgui_draw.cpp.o imgui/imgui_impl_sdl2.cpp.o imgui/imgui_demo.cpp.o imgui/imgui_impl_opengl3.cpp.o imgui/imgui_impl_vulkan.cpp.o imgui/imgui_widgets.cpp.o imgui/imgui.cpp.o imgui/imgui_stdlib.cpp.o # GUI library and OpenGL wrapper
 OBJ_FILES += hacks/navbot/micropather/micropather.cpp.o # Path solving library
-OBJ_FILES += bitbuf/bitbuf.cpp.o
+# OBJ_FILES += bitbuf/bitbuf.cpp.o
 
 OBJS = $(addprefix obj/, $(OBJ_FILES)) 
 
