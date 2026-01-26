@@ -10,7 +10,7 @@
 #include "../../classes/player.hpp"
 
 #include "../../random_seed.hpp"
-#include "../../md5/md5.hpp"
+#include "../../MD5/MD5.hpp"
 
 int get_pred_tickbase(user_cmd* user_cmd, Player* localplayer) {
   static int tick = 0;
@@ -50,7 +50,7 @@ void start_engine_prediction(user_cmd* user_cmd) {
     
   localplayer->set_current_cmd(user_cmd);
 
-  *random_seed = md5_pseudo_random(user_cmd->command_number) & INT_MAX;
+  *random_seed = MD5_PseudoRandom(user_cmd->command_number) & INT_MAX;
 
   global_vars->curtime = get_pred_tickbase(user_cmd, localplayer) * TICK_INTERVAL;
   global_vars->frametime = (prediction->engine_paused ? 0.0f : TICK_INTERVAL);
