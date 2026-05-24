@@ -330,7 +330,7 @@ void entry() {
   rv = funchook_prepare(funchook, (void**)&key_values_set_int_original, (void*)key_values_set_int_hook);
   error_assert(rv != 0, "Failed to prepare KeyValues::SetInt() hook\n");
   
-  key_values_load_from_buffer_original = (bool (*)(void*, const char*, const char*, void*, const char*))sigscan_module("client.so", "55 48 89 E5 41 57 41 56 4C 8D 35 ? ? ? ? 41 55 49 89 FD 66 49 0F 6E C6");
+  key_values_load_from_buffer_original = (bool (*)(void*, const char*, const char*, void*, const char*))sigscan_module("client.so", "55 48 89 E5 41 57 41 56 41 55 41 54 53 48 81 EC ? ? ? ? 48 85 D2 48 89 BD");
   error_assert(key_values_load_from_buffer_original == nullptr, "Failed to find KeyValues::LoadFromBuffer()");  
   
   // Hook Vulkan error_assertpresent
