@@ -322,7 +322,7 @@ void entry() {
   rv = funchook_prepare(funchook, (void**)&text_window_show_panel_original, (void*)text_window_show_panel_hook);
   error_assert(rv != 0, "Failed to prepare CTFTextWindow::ShowPanel hook\n");
 
-  key_values_constructor_original = (KeyValues* (*)(void*, const char*))sigscan_module("client.so", "55 31 C0 66 0F EF C0 48 89 E5 53");
+  key_values_constructor_original = (KeyValues* (*)(void*, const char*))sigscan_module("client.so", "55 66 0F EF C0 48 89 E5 53 48 89 FB 48 89 F7");
   error_assert(key_values_constructor_original == nullptr, "Failed to find KeyValues() constructor");
 
   key_values_set_int_original = (void (*)(void*, const char*, int))sigscan_module("client.so", "55 48 89 E5 53 89 D3 BA ? ? ? ? 48 83 EC ? E8 ? ? ? ? 48 85 C0 74 ? 89 58");
